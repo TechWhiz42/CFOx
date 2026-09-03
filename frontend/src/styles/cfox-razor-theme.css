@@ -30,9 +30,8 @@
     --cfox-amber: #a16207;
     --cfox-amber-soft: #fffbeb;
 
-    --cfox-shadow:
-        0 1px 2px rgba(23, 43, 77, 0.03),
-        0 8px 24px rgba(23, 43, 77, 0.045);
+    --cfox-shadow: 0 1px 2px rgba(23, 43, 77, 0.03),
+    0 8px 24px rgba(23, 43, 77, 0.045);
 
     --cfox-radius: 12px;
 }
@@ -43,17 +42,15 @@
 
 .cfox-app {
     min-height: 100vh;
-    background:
-        radial-gradient(
+    background: radial-gradient(
             circle at 50% -20%,
             rgba(47, 102, 255, 0.055),
             transparent 38%
-        ),
-        var(--cfox-bg);
+    ),
+    var(--cfox-bg);
     color: var(--cfox-text);
-    font-family:
-        Inter, ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .cfox-app[data-theme="dark"] {
@@ -83,9 +80,8 @@
     --cfox-amber: #fbbf24;
     --cfox-amber-soft: rgba(251, 191, 36, 0.11);
 
-    --cfox-shadow:
-        0 1px 2px rgba(0, 0, 0, 0.22),
-        0 12px 30px rgba(0, 0, 0, 0.17);
+    --cfox-shadow: 0 1px 2px rgba(0, 0, 0, 0.22),
+    0 12px 30px rgba(0, 0, 0, 0.17);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -123,9 +119,9 @@
     padding: 0 !important;
     margin: 0 !important;
     background: color-mix(
-        in srgb,
-        var(--cfox-surface) 94%,
-        transparent
+            in srgb,
+            var(--cfox-surface) 94%,
+            transparent
     ) !important;
     border-bottom: 1px solid var(--cfox-border) !important;
     box-shadow: 0 1px 4px rgba(23, 43, 77, 0.035) !important;
@@ -439,12 +435,11 @@
 
 .cfox-ai-panel > section {
     border-color: rgba(47, 102, 255, 0.18) !important;
-    background:
-        linear-gradient(
+    background: linear-gradient(
             135deg,
             var(--cfox-surface) 0%,
             var(--cfox-surface-blue) 100%
-        ) !important;
+    ) !important;
 }
 
 .cfox-chat-panel > section {
@@ -508,12 +503,11 @@
 }
 
 .cfox-app button:hover:not(:disabled) {
-    transition:
-        background 140ms ease,
-        border-color 140ms ease,
-        color 140ms ease,
-        box-shadow 140ms ease,
-        transform 140ms ease;
+    transition: background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
 }
 
 .cfox-app input,
@@ -923,18 +917,22 @@
     margin-bottom: 8px;
     border-radius: 7px;
     background: linear-gradient(
-        90deg,
-        var(--cfox-surface-alt),
-        var(--cfox-surface-blue),
-        var(--cfox-surface-alt)
+            90deg,
+            var(--cfox-surface-alt),
+            var(--cfox-surface-blue),
+            var(--cfox-surface-alt)
     );
     background-size: 200% 100%;
     animation: cfox-skeleton 1.4s ease-in-out infinite;
 }
 
 @keyframes cfox-skeleton {
-    from { background-position: 200% 0; }
-    to { background-position: -200% 0; }
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
 }
 
 .cfox-transaction-empty {
@@ -1026,5 +1024,246 @@
     .cfox-pagination {
         padding-left: 20px;
         padding-right: 20px;
+    }
+}
+
+/* =========================================================
+   FINANCIAL HEALTH
+   ========================================================= */
+
+.cfox-financial-health {
+    width: 100%;
+}
+
+.cfox-financial-health-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+}
+
+.cfox-financial-health-header h2 {
+    margin: 5px 0 8px;
+    color: #0d1b32;
+    font-size: 22px;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+}
+
+.cfox-financial-health-header p {
+    max-width: 680px;
+    margin: 0;
+    color: #68778d;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.cfox-financial-health-method {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border: 1px solid #dce4ef;
+    border-radius: 999px;
+    background: #f8faff;
+    color: #53647d;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.cfox-financial-health-body {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 42px;
+    align-items: center;
+}
+
+.cfox-financial-health-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.cfox-financial-health-score-ring {
+    width: 156px;
+    height: 156px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #e8edf5;
+    box-shadow: 0 16px 34px rgba(23, 43, 77, 0.08);
+}
+
+.cfox-financial-health-score-ring > div {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+}
+
+.cfox-financial-health-score-ring strong {
+    color: #0d1b32;
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -0.045em;
+}
+
+.cfox-financial-health-score-ring span {
+    color: #8b98aa;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cfox-financial-health-status {
+    padding: 6px 13px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.cfox-financial-health-status.healthy {
+    background: #eaf8f0;
+    color: #16794c;
+}
+
+.cfox-financial-health-status.stable {
+    background: #eef4ff;
+    color: #2f66ff;
+}
+
+.cfox-financial-health-status.at-risk {
+    background: #fff7e6;
+    color: #a16207;
+}
+
+.cfox-financial-health-status.critical {
+    background: #fff0f1;
+    color: #be123c;
+}
+
+.cfox-financial-health-status.unknown {
+    background: #f1f4f8;
+    color: #68778d;
+}
+
+.cfox-financial-health-breakdown {
+    display: grid;
+    gap: 20px;
+}
+
+.cfox-health-row {
+    display: grid;
+    gap: 8px;
+}
+
+.cfox-health-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.cfox-health-row-top span {
+    color: #34445d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.cfox-health-row-top strong {
+    color: #0d1b32;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.cfox-health-track {
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf1f7;
+}
+
+.cfox-health-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(
+            90deg,
+            #2f66ff,
+            #6b7fff
+    );
+    transition: width 0.45s ease;
+}
+
+.cfox-financial-health-loading {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 42px;
+    align-items: center;
+}
+
+.cfox-financial-health-score-skeleton {
+    width: 156px;
+    height: 156px;
+    margin: auto;
+    border-radius: 50%;
+    background: #edf1f7;
+    animation: cfox-health-pulse 1.3s ease-in-out infinite;
+}
+
+.cfox-financial-health-lines {
+    display: grid;
+    gap: 22px;
+}
+
+.cfox-financial-health-lines span {
+    display: block;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: #edf1f7;
+    animation: cfox-health-pulse 1.3s ease-in-out infinite;
+}
+
+.cfox-financial-health-empty {
+    padding: 36px 0;
+    text-align: center;
+    color: #7a8799;
+    font-size: 13px;
+}
+
+@keyframes cfox-health-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@media (max-width: 760px) {
+    .cfox-financial-health-header {
+        flex-direction: column;
+    }
+
+    .cfox-financial-health-body,
+    .cfox-financial-health-loading {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .cfox-financial-health-score {
+        align-items: flex-start;
+    }
+
+    .cfox-financial-health-score-ring {
+        width: 132px;
+        height: 132px;
+    }
+
+    .cfox-financial-health-score-ring strong {
+        font-size: 36px;
     }
 }

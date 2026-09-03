@@ -5,6 +5,7 @@ from app.auth_routes import router as auth_router
 from app.config import settings
 from app.errors import register_exception_handlers
 from app.routes import router, webhook_router
+from app.observability import configure_logging, install_request_observability
 
 
 app = FastAPI(
@@ -12,7 +13,9 @@ app = FastAPI(
 )
 
 
+configure_logging(getattr(settings, "LOG_LEVEL", "INFO"))
 register_exception_handlers(app)
+install_request_observability(app)
 
 
 app.add_middleware(

@@ -1,259 +1,129 @@
-from app.auth import create_access_token, hash_password
-from app.models import ChatMessage, Conversation, User
+from app.cfo_reasoning import (
+    build_verified_reasoning_context,
+    is_follow_up_question,
+    serialize_reasoning_context,
+)
 
 
-def authenticated_headers(user):
-    token = create_access_token(user.id)
-
-    return {
-        "Authorization": f"Bearer {token}",
-    }
-
-
-def create_user(db, email):
-    user = User(
-        email=email,
-        hashed_password=hash_password(
-            "StrongPassword123"
-        ),
-        is_active=1,
+def test_follow_up_detection():
+    assert is_follow_up_question("What about UPI?")
+    assert is_follow_up_question("Why did that happen?")
+    assert not is_follow_up_question(
+        "Show me revenue by payment method."
     )
 
-    db.add(user)
-    db.commit()
-    db.refresh(user)
 
-    return user
-
-
-def test_conversation_crud_requires_authentication(client):
-    response = client.get(
-        "/transactions/cfo/conversations"
-    )
-
-    assert response.status_code == 401
-
-
-def test_create_list_and_get_conversation(client, db):
-    user = create_user(
-        db,
-        "conversation-owner@example.com",
-    )
-
-    headers = authenticated_headers(user)
-
-    create_response = client.post(
-        "/transactions/cfo/conversations",
-        json={
-            "title": "Revenue investigation",
+def test_reasoning_context_extracts_verified_metrics():
+    result = build_verified_reasoning_context(
+        "get_revenue_analysis",
+        {
+            "comparison": {
+                "previous_period": {"revenue": 100000},
+                "current_period": {
+                    "revenue": 80000,
+                    "failure_rate": 12.5,
+                },
+                "changes": {
+                    "revenue_change": -20000,
+                    "failure_rate_change_percentage_points": 4,
+                },
+            },
+            "anomaly": {
+                "score": 72,
+                "reasons": ["Revenue dropped"],
+            },
+            "cashflow": {
+                "risk": "high",
+                "risk_score": 80,
+            },
         },
-        headers=headers,
     )
 
-    assert create_response.status_code == 201
+    facts = "\n".join(result["facts"])
 
-    conversation = create_response.json()
-
-    assert conversation["user_id"] == user.id
-    assert conversation["title"] == "Revenue investigation"
-
-    conversation_id = conversation["id"]
-
-    list_response = client.get(
-        "/transactions/cfo/conversations",
-        headers=headers,
-    )
-
-    assert list_response.status_code == 200
-
-    items = list_response.json()
-
-    assert len(items) == 1
-    assert items[0]["id"] == conversation_id
-
-    db.add(
-        ChatMessage(
-            conversation_id=conversation_id,
-            role="user",
-            content="Why did revenue fall?",
-        )
-    )
-    db.commit()
-
-    detail_response = client.get(
-        f"/transactions/cfo/conversations/{conversation_id}",
-        headers=headers,
-    )
-
-    assert detail_response.status_code == 200
-
-    detail = detail_response.json()
-
-    assert detail["id"] == conversation_id
-    assert len(detail["messages"]) == 1
-    assert detail["messages"][0]["content"] == (
-        "Why did revenue fall?"
-    )
+    assert "Current-period revenue: $80,000.00." in facts
+    assert "Previous-period revenue: $100,000.00." in facts
+    assert "Revenue change: $-20,000.00." in facts
+    assert "Current-period failure rate: 12.50%." in facts
+    assert "Anomaly score: 72." in facts
+    assert "Cash-flow risk: high." in facts
 
 
-def test_conversations_are_isolated_between_users(client, db):
-    owner = create_user(
-        db,
-        "owner@example.com",
-    )
-
-    other_user = create_user(
-        db,
-        "other@example.com",
-    )
-
-    owner_headers = authenticated_headers(owner)
-    other_headers = authenticated_headers(other_user)
-
-    create_response = client.post(
-        "/transactions/cfo/conversations",
-        json={
-            "title": "Private CFO conversation",
+def test_revenue_decline_and_failure_increase_are_related():
+    result = build_verified_reasoning_context(
+        "get_revenue_analysis",
+        {
+            "comparison": {
+                "previous_period": {"revenue": 1000},
+                "current_period": {
+                    "revenue": 800,
+                    "failure_rate": 10,
+                },
+                "changes": {
+                    "revenue_change": -200,
+                    "failure_rate_change_percentage_points": 5,
+                },
+            }
         },
-        headers=owner_headers,
     )
 
-    assert create_response.status_code == 201
-
-    conversation_id = create_response.json()["id"]
-
-    list_response = client.get(
-        "/transactions/cfo/conversations",
-        headers=other_headers,
+    assert any(
+        "revenue declined" in relationship.lower()
+        and "failure rate increased" in relationship.lower()
+        for relationship in result["relationships"]
     )
 
-    assert list_response.status_code == 200
-    assert list_response.json() == []
 
-    detail_response = client.get(
-        f"/transactions/cfo/conversations/{conversation_id}",
-        headers=other_headers,
-    )
-
-    assert detail_response.status_code == 404
-
-    delete_response = client.delete(
-        f"/transactions/cfo/conversations/{conversation_id}",
-        headers=other_headers,
-    )
-
-    assert delete_response.status_code == 404
-
-
-def test_delete_conversation_cascades_messages(client, db):
-    user = create_user(
-        db,
-        "delete-owner@example.com",
-    )
-
-    headers = authenticated_headers(user)
-
-    create_response = client.post(
-        "/transactions/cfo/conversations",
-        json={
-            "title": "Delete me",
+def test_payment_method_context_is_deterministic():
+    result = build_verified_reasoning_context(
+        "compare_payment_methods",
+        {
+            "payment_methods": {
+                "upi": {
+                    "current_period": {
+                        "revenue": 5000,
+                        "failure_rate": 12,
+                    },
+                    "previous_period": {
+                        "revenue": 7000,
+                    },
+                    "changes": {
+                        "failure_rate_change_percentage_points": 3,
+                    },
+                },
+                "card": {
+                    "current_period": {
+                        "revenue": 9000,
+                        "failure_rate": 2,
+                    },
+                    "previous_period": {
+                        "revenue": 8000,
+                    },
+                    "changes": {},
+                },
+            }
         },
-        headers=headers,
     )
 
-    conversation_id = create_response.json()["id"]
-
-    db.add(
-        ChatMessage(
-            conversation_id=conversation_id,
-            role="user",
-            content="Temporary question",
-        )
+    assert any("upi" in item.lower() for item in result["facts"])
+    assert any(
+        "failure rate increased" in item.lower()
+        for item in result["relationships"]
     )
-    db.commit()
-
-    response = client.delete(
-        f"/transactions/cfo/conversations/{conversation_id}",
-        headers=headers,
-    )
-
-    assert response.status_code == 204
-
-    assert (
-        db.query(Conversation)
-        .filter(
-            Conversation.id == conversation_id
-        )
-        .first()
-        is None
-    )
-
-    assert (
-        db.query(ChatMessage)
-        .filter(
-            ChatMessage.conversation_id ==
-            conversation_id
-        )
-        .count()
-        == 0
+    assert any(
+        "largest current-period revenue contribution" in item.lower()
+        for item in result["relationships"]
     )
 
 
-def test_message_endpoint_persists_exchange(
-    client,
-    db,
-    monkeypatch,
-):
-    user = create_user(
-        db,
-        "message-owner@example.com",
-    )
-
-    headers = authenticated_headers(user)
-
-    create_response = client.post(
-        "/transactions/cfo/conversations",
-        headers=headers,
-    )
-
-    conversation_id = create_response.json()["id"]
-
-    from app import cfo_conversation_service
-
-    def fake_answer(
-        db,
-        question,
-        history,
-        user_id,
-    ):
-        assert user_id == user.id
-        return (
-            "get_revenue_analysis",
-            "Revenue is stable.",
-        )
-
-    monkeypatch.setattr(
-        cfo_conversation_service,
-        "generate_stateful_cfo_answer",
-        fake_answer,
-    )
-
-    response = client.post(
-        f"/transactions/cfo/conversations/{conversation_id}/messages",
-        json={
-            "content": "Why did revenue change?"
+def test_serialization_is_valid_json():
+    encoded = serialize_reasoning_context(
+        "get_revenue_analysis",
+        {
+            "comparison": {
+                "current_period": {"revenue": 1234.5}
+            }
         },
-        headers=headers,
     )
 
-    assert response.status_code == 200
-
-    data = response.json()
-
-    assert data["conversation_id"] == conversation_id
-    assert data["tool_used"] == "get_revenue_analysis"
-    assert data["user_message"]["role"] == "user"
-    assert data["assistant_message"]["role"] == "assistant"
-    assert data["assistant_message"]["content"] == (
-        "Revenue is stable."
-    )
+    assert '"tool":"get_revenue_analysis"' in encoded

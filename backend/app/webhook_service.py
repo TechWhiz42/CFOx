@@ -39,6 +39,15 @@ def process_razorpay_event(
     used by CFOx today; multi-merchant routing can later map Razorpay
     account_id to a CFOx user.
     """
+    if not isinstance(event_id, str) or not event_id.strip():
+        raise ValueError("event_id is required")
+    if len(event_id) > 255:
+        raise ValueError("event_id is too long")
+    if not isinstance(event_name, str) or not event_name.strip():
+        raise ValueError("event_name is required")
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be a JSON object")
+
     existing = (
         db.query(RazorpayWebhookEvent)
         .filter(RazorpayWebhookEvent.event_id == event_id)

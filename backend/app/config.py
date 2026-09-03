@@ -73,6 +73,11 @@ class Settings:
         )
     )
 
+    LOG_LEVEL: str = os.getenv(
+        "LOG_LEVEL",
+        "DEBUG" if DEBUG else "INFO",
+    ).strip().upper()
+
     # =========================================================
     # AUTHENTICATION
     # =========================================================

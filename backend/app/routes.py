@@ -1,27 +1,18 @@
 import json
 from datetime import datetime, timedelta
 
+from app.config import settings
+from app.webhook_service import process_razorpay_event, verify_razorpay_signature
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.database import get_db
 from app.auth import get_current_user
-from app.models import (
-    Transaction,
-    User,
-    Conversation,
-    ChatMessage,
-)
-
-from app.webhook_service import (
-    process_razorpay_event,
-    verify_razorpay_signature,
-)
-
+from app.models import Transaction, User
 from app.analytics import (
     calculate_anomaly_score,
     compare_periods,
@@ -30,58 +21,43 @@ from app.analytics import (
     get_daily_performance,
     get_customer_concentration,
 )
-
 from app.alerts import generate_financial_alerts
 from app.cashflow import calculate_cashflow_risk
-
 from app.chat_service import (
     route_question,
     stream_cfo_answer,
 )
-
 from app.forecasting import (
     get_daily_revenue,
     forecast_revenue,
 )
-
 from app.ai_service import generate_financial_insight
-
+from app import ai_investigation
+from app.ai_investigation import investigate_financial_question
+from app.financial_health import calculate_financial_health
+from app.financial_actions import generate_financial_actions
+from app.cfo_conversation_service import (
+    get_owned_conversation,
+    get_conversation_history,
+    prepare_cfo_exchange,
+    persist_cfo_exchange,
+)
+from app.models import ChatMessage, Conversation
 from app.tools import (
     get_revenue_analysis,
     get_cashflow_analysis,
     get_failed_transactions,
 )
-
 from app.services.analytics_service import (
     get_dashboard_analysis,
     get_alert_analysis,
     get_ai_insight_data,
     get_anomaly_analysis,
 )
-
 from app.services.revenue_service import get_revenue_history
+from app.schemas import TransactionCreate, TransactionResponse
+from app.reliability import CFOAIServiceError, public_ai_error_detail
 
-from app.schemas import (
-    TransactionCreate,
-    TransactionResponse,
-    AIInvestigationRequest,
-    AIInvestigationResponse,
-    CFOConversationCreateRequest,
-    CFOConversationResponse,
-    CFOConversationDetailResponse,
-    CFOConversationMessage,
-    CFOConversationMessageRequest,
-    CFOConversationMessageResponse,
-)
-
-from app.ai_investigation import investigate_financial_question
-
-from app import cfo_conversation_service
-
-
-# =========================================================
-# TRANSACTION ROUTER
-# =========================================================
 
 router = APIRouter(
     prefix="/transactions",
@@ -195,34 +171,21 @@ def create_transaction(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-
-        # The unique payment ID is the intended duplicate guard.
-        # Avoid exposing raw database errors to API clients.
+        # The unique payment ID is the intended duplicate guard. Avoid
+        # exposing raw database errors to API clients.
         if "razorpay_payment_id" in str(exc).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "A transaction with this "
-                    "razorpay_payment_id already exists."
-                ),
+                detail="A transaction with this razorpay_payment_id already exists.",
             ) from exc
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Transaction could not be created because "
-                "it conflicts with existing data."
-            ),
+            detail="Transaction could not be created because it conflicts with existing data.",
         ) from exc
 
     db.refresh(db_transaction)
-
     return db_transaction
 
-
-# =========================================================
-# LIST TRANSACTIONS
-# =========================================================
 
 @router.get(
     "",
@@ -237,26 +200,14 @@ def list_transactions(
     """List only the authenticated user's transactions."""
 
     if limit < 1 or limit > 100:
-        raise HTTPException(
-            status_code=400,
-            detail="limit must be between 1 and 100",
-        )
-
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 100")
     if offset < 0:
-        raise HTTPException(
-            status_code=400,
-            detail="offset must be non-negative",
-        )
+        raise HTTPException(status_code=400, detail="offset must be non-negative")
 
     return (
         db.query(Transaction)
-        .filter(
-            Transaction.user_id == current_user.id
-        )
-        .order_by(
-            Transaction.created_at.desc(),
-            Transaction.id.desc(),
-        )
+        .filter(Transaction.user_id == current_user.id)
+        .order_by(Transaction.created_at.desc(), Transaction.id.desc())
         .offset(offset)
         .limit(limit)
         .all()
@@ -365,7 +316,6 @@ def ai_insight(
         financial_data,
     )
 
-
 # =========================================================
 # PAYMENT METHOD ANALYTICS
 # =========================================================
@@ -400,8 +350,6 @@ def anomaly_analysis(
         payment_method=normalized_method,
         user_id=current_user.id,
     )
-
-
 # =========================================================
 # UNIFIED DASHBOARD
 # =========================================================
@@ -507,29 +455,30 @@ def cfo_chat(
     # -----------------------------------------------------
 
     def generate():
-        yield json.dumps(
-            {
-                "type": "metadata",
-                "tool_used": tool_name,
-            }
-        ) + "\n"
-
-        for token in stream_cfo_answer(
-            question,
-            tool_result,
-        ):
+        try:
             yield json.dumps(
                 {
-                    "type": "token",
-                    "content": token,
+                    "type": "metadata",
+                    "tool_used": tool_name,
                 }
             ) + "\n"
 
-        yield json.dumps(
-            {
-                "type": "done",
-            }
-        ) + "\n"
+            for token in stream_cfo_answer(
+                question,
+                tool_result,
+            ):
+                yield json.dumps(
+                    {
+                        "type": "token",
+                        "content": token,
+                    }
+                ) + "\n"
+
+            yield json.dumps({"type": "done"}) + "\n"
+        except CFOAIServiceError:
+            yield json.dumps({"type": "error", "detail": public_ai_error_detail()}) + "\n"
+        except Exception:
+            yield json.dumps({"type": "error", "detail": "An unexpected error occurred."}) + "\n"
 
     return StreamingResponse(
         generate(),
@@ -599,7 +548,6 @@ def revenue_history(
         user_id=current_user.id,
     )
 
-
 # =========================================================
 # PHASE 9 — ADVANCED FINANCIAL ANALYTICS
 # =========================================================
@@ -612,20 +560,12 @@ def advanced_kpis(
     current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(
-            status_code=400,
-            detail="days must be between 1 and 365",
-        )
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
 
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days)
-
     return calculate_advanced_kpis(
-        db,
-        start_date,
-        end_date,
-        normalize_payment_method(payment_method),
-        current_user.id,
+        db, start_date, end_date, normalize_payment_method(payment_method), current_user.id
     )
 
 
@@ -637,22 +577,12 @@ def daily_performance(
     current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(
-            status_code=400,
-            detail="days must be between 1 and 365",
-        )
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
 
     return {
         "days": days,
-        "payment_method": display_payment_method(
-            normalize_payment_method(payment_method)
-        ),
-        "data": get_daily_performance(
-            db,
-            days,
-            payment_method,
-            current_user.id,
-        ),
+        "payment_method": display_payment_method(normalize_payment_method(payment_method)),
+        "data": get_daily_performance(db, days, payment_method, current_user.id),
     }
 
 
@@ -665,23 +595,352 @@ def customer_concentration(
     current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(
-            status_code=400,
-            detail="days must be between 1 and 365",
-        )
-
+        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
     if top_n < 1 or top_n > 100:
-        raise HTTPException(
-            status_code=400,
-            detail="top_n must be between 1 and 100",
-        )
+        raise HTTPException(status_code=400, detail="top_n must be between 1 and 100")
 
     return get_customer_concentration(
+        db, days, top_n, payment_method, current_user.id
+    )
+
+
+# =========================================================
+# PHASE 10 — AI CFO INVESTIGATION
+# =========================================================
+
+class CFOInvestigationRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=2000)
+    days: int = Field(default=7, ge=1, le=90)
+
+
+@router.post("/ai/investigate")
+def investigate_cfo_question(
+    request: CFOInvestigationRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    return investigate_financial_question(
         db,
-        days,
-        top_n,
-        payment_method,
+        question=question,
+        user_id=current_user.id,
+        days=request.days,
+    )
+
+
+# =========================================================
+# PHASE 12 — FINANCIAL HEALTH
+# =========================================================
+
+@router.get("/analytics/financial-health")
+def financial_health(
+    payment_method: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    normalized_method = normalize_payment_method(payment_method)
+
+    comparison = compare_periods(
+        db,
+        normalized_method,
         current_user.id,
+    )
+    forecast = forecast_revenue(
+        db,
+        history_days=30,
+        forecast_days=7,
+        user_id=current_user.id,
+    )
+    cashflow = calculate_cashflow_risk(
+        db,
+        payment_method=normalized_method,
+        comparison=comparison,
+        forecast=forecast,
+        user_id=current_user.id,
+    )
+    anomaly = calculate_anomaly_score(comparison)
+
+    health = calculate_financial_health(
+        comparison=comparison,
+        anomaly=anomaly,
+        cashflow=cashflow,
+        forecast=forecast,
+    )
+
+    return {
+        "payment_method": display_payment_method(normalized_method),
+        "health": health,
+        "supporting_data": {
+            "comparison": comparison,
+            "anomaly": anomaly,
+            "cashflow": cashflow,
+            "forecast": forecast,
+        },
+    }
+
+
+# =========================================================
+# PHASE 12 — FINANCIAL ACTIONS
+# =========================================================
+
+@router.get("/analytics/financial-actions")
+def financial_actions(
+    payment_method: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    normalized_method = normalize_payment_method(payment_method)
+
+    comparison = compare_periods(
+        db,
+        normalized_method,
+        current_user.id,
+    )
+    forecast = forecast_revenue(
+        db,
+        history_days=30,
+        forecast_days=7,
+        user_id=current_user.id,
+    )
+    cashflow = calculate_cashflow_risk(
+        db,
+        payment_method=normalized_method,
+        comparison=comparison,
+        forecast=forecast,
+        user_id=current_user.id,
+    )
+    anomaly = calculate_anomaly_score(comparison)
+
+    health = calculate_financial_health(
+        comparison=comparison,
+        anomaly=anomaly,
+        cashflow=cashflow,
+        forecast=forecast,
+    )
+
+    actions = generate_financial_actions(
+        health,
+        {
+            "comparison": comparison,
+            "anomaly": anomaly,
+            "cashflow": cashflow,
+            "forecast": forecast,
+        },
+    )
+
+    return {
+        "payment_method": display_payment_method(normalized_method),
+        "health": health,
+        "actions": actions,
+        "supporting_data": {
+            "comparison": comparison,
+            "anomaly": anomaly,
+            "cashflow": cashflow,
+            "forecast": forecast,
+        },
+    }
+
+
+# =========================================================
+# PHASE 11 — PERSISTENT CFO CONVERSATIONS
+# =========================================================
+
+class ConversationCreateRequest(BaseModel):
+    title: str | None = Field(default=None, max_length=255)
+
+
+class ConversationMessageRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
+def _conversation_payload(conversation: Conversation) -> dict:
+    return {
+        "id": conversation.id,
+        "title": conversation.title,
+        "created_at": conversation.created_at.isoformat(),
+        "updated_at": conversation.updated_at.isoformat(),
+    }
+
+
+def _conversation_with_messages(conversation: Conversation, messages: list[ChatMessage]) -> dict:
+    payload = _conversation_payload(conversation)
+    payload["messages"] = [
+        {
+            "id": message.id,
+            "role": message.role,
+            "content": message.content,
+            "created_at": message.created_at.isoformat(),
+        }
+        for message in messages
+    ]
+    return payload
+
+
+@router.post("/cfo/conversations", status_code=status.HTTP_201_CREATED)
+def create_cfo_conversation(
+    request: ConversationCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    title = request.title.strip() if request.title else None
+    conversation = Conversation(
+        user_id=current_user.id,
+        title=title or "New conversation",
+    )
+    db.add(conversation)
+    db.commit()
+    db.refresh(conversation)
+    return _conversation_payload(conversation)
+
+
+@router.get("/cfo/conversations")
+def list_cfo_conversations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    conversations = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == current_user.id)
+        .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
+        .all()
+    )
+    return [_conversation_payload(item) for item in conversations]
+
+
+@router.get("/cfo/conversations/{conversation_id}")
+def get_cfo_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    conversation = get_owned_conversation(db, conversation_id, current_user.id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    messages = get_conversation_history(db, conversation_id, limit=100)
+    return _conversation_with_messages(conversation, messages)
+
+
+@router.delete("/cfo/conversations/{conversation_id}")
+def delete_cfo_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    conversation = get_owned_conversation(db, conversation_id, current_user.id)
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    db.delete(conversation)
+    db.commit()
+    return {"status": "deleted", "id": conversation_id}
+
+
+@router.post("/cfo/conversations/{conversation_id}/messages")
+def create_cfo_message(
+    conversation_id: int,
+    request: ConversationMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = request.content.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    try:
+        conversation, contextual_question, tool_name, tool_result = prepare_cfo_exchange(
+            db,
+            conversation_id,
+            question,
+            current_user.id,
+        )
+    except ValueError as exc:
+        if str(exc) == "Conversation not found.":
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        raise
+
+    answer = "".join(stream_cfo_answer(contextual_question, tool_result))
+    user_message, assistant_message = persist_cfo_exchange(
+        db,
+        conversation,
+        question,
+        answer,
+    )
+
+    return {
+        "tool_used": tool_name,
+        "user_message": {
+            "id": user_message.id,
+            "role": user_message.role,
+            "content": user_message.content,
+            "created_at": user_message.created_at.isoformat(),
+        },
+        "assistant_message": {
+            "id": assistant_message.id,
+            "role": assistant_message.role,
+            "content": assistant_message.content,
+            "created_at": assistant_message.created_at.isoformat(),
+        },
+    }
+
+
+@router.post("/cfo/conversations/{conversation_id}/messages/stream")
+def stream_cfo_conversation_message(
+    conversation_id: int,
+    request: ConversationMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = request.content.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    try:
+        conversation, contextual_question, tool_name, tool_result = prepare_cfo_exchange(
+            db,
+            conversation_id,
+            question,
+            current_user.id,
+        )
+    except ValueError as exc:
+        if str(exc) == "Conversation not found.":
+            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+        raise
+
+    def generate():
+        answer_parts: list[str] = []
+        try:
+            yield json.dumps({"type": "metadata", "tool_used": tool_name}) + "\n"
+            for token in stream_cfo_answer(contextual_question, tool_result):
+                answer_parts.append(token)
+                yield json.dumps({"type": "token", "content": token}) + "\n"
+
+            answer = "".join(answer_parts)
+            user_message, assistant_message = persist_cfo_exchange(
+                db,
+                conversation,
+                question,
+                answer,
+            )
+
+            yield json.dumps({
+                "type": "done",
+                "user_message_id": user_message.id,
+                "assistant_message_id": assistant_message.id,
+            }) + "\n"
+        except Exception:
+            db.rollback()
+            yield json.dumps({
+                "type": "error",
+                "detail": "CFO analysis is temporarily unavailable. Please try again.",
+            }) + "\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
     )
 
 
@@ -705,7 +964,6 @@ async def razorpay_webhook(
     Authentication is replaced here by Razorpay HMAC-SHA256 signature
     verification over the exact raw request body.
     """
-
     if not settings.RAZORPAY_WEBHOOK_SECRET:
         raise HTTPException(
             status_code=503,
@@ -719,21 +977,19 @@ async def razorpay_webhook(
         )
 
     body = await request.body()
-
-    signature = request.headers.get(
-        "X-Razorpay-Signature",
-        "",
-    )
-
-    event_id = request.headers.get(
-        "x-razorpay-event-id",
-        "",
-    )
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    event_id = request.headers.get("x-razorpay-event-id", "")
 
     if not event_id:
         raise HTTPException(
             status_code=400,
             detail="Missing x-razorpay-event-id header.",
+        )
+
+    if len(event_id) > 255:
+        raise HTTPException(
+            status_code=400,
+            detail="x-razorpay-event-id is too long.",
         )
 
     if not verify_razorpay_signature(
@@ -754,395 +1010,28 @@ async def razorpay_webhook(
             detail="Webhook body must contain valid JSON.",
         ) from exc
 
-    event_name = payload.get("event")
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="Webhook body must contain a JSON object.",
+        )
 
+    event_name = payload.get("event")
     if not isinstance(event_name, str) or not event_name:
         raise HTTPException(
             status_code=400,
             detail="Webhook event is missing.",
         )
 
-    result = process_razorpay_event(
-        db,
-        event_id=event_id,
-        event_name=event_name,
-        payload=payload,
-        owner_user_id=settings.RAZORPAY_WEBHOOK_USER_ID,
-    )
-
-    return {
-        "status": "ok",
-        "result": result,
-    }
-
-
-# =========================================================
-# AI INVESTIGATION
-# =========================================================
-
-@router.post(
-    "/ai/investigate",
-    response_model=AIInvestigationResponse,
-)
-def ai_investigate(
-    request: AIInvestigationRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    question = request.question.strip()
-
-    if not question:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Question cannot be empty.",
-        )
-
-    return investigate_financial_question(
-        db,
-        question=question,
-        user_id=current_user.id,
-        days=request.days,
-    )
-
-
-# =========================================================
-# PHASE 11 — PERSISTENT CFO CONVERSATIONS
-# =========================================================
-
-@router.post(
-    "/cfo/conversations",
-    response_model=CFOConversationResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-def create_cfo_conversation(
-    request: CFOConversationCreateRequest | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Create a new persistent CFO conversation.
-
-    The request body is optional so both of these are valid:
-
-        POST /transactions/cfo/conversations
-
-    and:
-
-        POST /transactions/cfo/conversations
-        {
-            "title": "Revenue investigation"
-        }
-    """
-
-    title = None
-
-    if request is not None:
-        title = request.title
-
-    conversation = Conversation(
-        user_id=current_user.id,
-        title=title or "New conversation",
-    )
-
-    db.add(conversation)
-    db.commit()
-    db.refresh(conversation)
-
-    return conversation
-
-
-@router.get(
-    "/cfo/conversations",
-    response_model=list[CFOConversationResponse],
-)
-def list_cfo_conversations(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Return only the authenticated user's conversations.
-    """
-
-    return (
-        db.query(Conversation)
-        .filter(
-            Conversation.user_id == current_user.id,
-        )
-        .order_by(
-            Conversation.updated_at.desc(),
-            Conversation.id.desc(),
-        )
-        .all()
-    )
-
-
-@router.get(
-    "/cfo/conversations/{conversation_id}",
-    response_model=CFOConversationDetailResponse,
-)
-def get_cfo_conversation(
-    conversation_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Return a conversation and its message history.
-
-    Access is always restricted to the authenticated owner.
-    """
-
-    conversation = (
-        cfo_conversation_service.get_owned_conversation(
-            db,
-            conversation_id,
-            current_user.id,
-        )
-    )
-
-    if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found.",
-        )
-
-    messages = (
-        cfo_conversation_service.get_conversation_history(
-            db,
-            conversation_id,
-            limit=100,
-        )
-    )
-
-    return {
-        "id": conversation.id,
-        "user_id": conversation.user_id,
-        "title": conversation.title,
-        "created_at": conversation.created_at,
-        "updated_at": conversation.updated_at,
-        "messages": messages,
-    }
-
-
-@router.delete(
-    "/cfo/conversations/{conversation_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-)
-def delete_cfo_conversation(
-    conversation_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Delete a conversation and all of its messages.
-
-    Messages are explicitly deleted first rather than relying
-    exclusively on database-level ON DELETE CASCADE behavior.
-    """
-
-    conversation = (
-        cfo_conversation_service.get_owned_conversation(
-            db,
-            conversation_id,
-            current_user.id,
-        )
-    )
-
-    if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found.",
-        )
-
-    # Explicitly delete child messages first.
-    db.query(ChatMessage).filter(
-        ChatMessage.conversation_id == conversation_id
-    ).delete(
-        synchronize_session=False,
-    )
-
-    # Then delete the conversation.
-    db.delete(conversation)
-
-    db.commit()
-
-    return None
-
-
-@router.post(
-    "/cfo/conversations/{conversation_id}/messages",
-    response_model=CFOConversationMessageResponse,
-)
-def send_cfo_conversation_message(
-    conversation_id: int,
-    request: CFOConversationMessageRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    Send a message to a persistent CFO conversation.
-
-    The complete exchange is persisted:
-
-        user question
-              ↓
-        CFO tool routing
-              ↓
-        verified financial data
-              ↓
-        Ollama response
-              ↓
-        assistant message
-    """
-
-    conversation = (
-        cfo_conversation_service.get_owned_conversation(
-            db,
-            conversation_id,
-            current_user.id,
-        )
-    )
-
-    if conversation is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found.",
-        )
-
-    question = request.content.strip()
-
-    history = (
-        cfo_conversation_service.get_conversation_history(
-            db,
-            conversation_id,
-        )
-    )
-
     try:
-        tool_name, answer = (
-            cfo_conversation_service.generate_stateful_cfo_answer(
-                db,
-                question,
-                history,
-                current_user.id,
-            )
-        )
-
-        user_message, assistant_message = (
-            cfo_conversation_service.persist_cfo_exchange(
-                db,
-                conversation,
-                question,
-                answer,
-            )
-        )
-
-    except Exception:
-        db.rollback()
-        raise
-
-    return {
-        "conversation_id": conversation.id,
-        "tool_used": tool_name,
-        "user_message": user_message,
-        "assistant_message": assistant_message,
-    }
-
-# =========================================================
-# PERSISTENT AI CFO CHAT — STREAMING
-# =========================================================
-
-@router.post(
-    "/cfo/conversations/{conversation_id}/messages/stream"
-)
-def stream_cfo_conversation_message(
-    conversation_id: int,
-    request: CFOConversationMessageRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    question = request.content.strip()
-
-    if not question:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message cannot be empty.",
-        )
-
-    try:
-        (
-            conversation,
-            reasoning_question,
-            tool_name,
-            tool_result,
-        ) = cfo_conversation_service.prepare_cfo_exchange(
+        result = process_razorpay_event(
             db,
-            conversation_id,
-            question,
-            current_user.id,
+            event_id=event_id,
+            event_name=event_name,
+            payload=payload,
+            owner_user_id=settings.RAZORPAY_WEBHOOK_USER_ID,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Conversation not found.",
-        )
-
-    def generate():
-        assistant_answer = ""
-
-        try:
-            yield json.dumps(
-                {
-                    "type": "metadata",
-                    "conversation_id": conversation.id,
-                    "tool_used": tool_name,
-                }
-            ) + "\n"
-
-            for token in stream_cfo_answer(
-                reasoning_question,
-                tool_result,
-            ):
-                assistant_answer += token
-
-                yield json.dumps(
-                    {
-                        "type": "token",
-                        "content": token,
-                    }
-                ) + "\n"
-
-            assistant_answer = assistant_answer.strip()
-
-            if not assistant_answer:
-                raise RuntimeError(
-                    "CFO generated an empty response."
-                )
-
-            cfo_conversation_service.persist_cfo_exchange(
-                db,
-                conversation,
-                question,
-                assistant_answer,
-            )
-
-            yield json.dumps(
-                {
-                    "type": "done",
-                }
-            ) + "\n"
-
-        except Exception as exc:
-            db.rollback()
-
-            yield json.dumps(
-                {
-                    "type": "error",
-                    "detail": str(exc),
-                }
-            ) + "\n"
-
-    return StreamingResponse(
-        generate(),
-        media_type="application/x-ndjson",
-    )
+    return {"status": "ok", "result": result}

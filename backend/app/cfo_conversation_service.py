@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -8,7 +10,10 @@ from app.analytics import (
     compare_payment_methods as analytics_compare_payment_methods,
 )
 from app.chat_service import route_question, generate_cfo_answer
-from app.cfo_reasoning import build_reasoning_question
+from app.cfo_reasoning import (
+    build_reasoning_question,
+    serialize_reasoning_context,
+)
 from app.models import ChatMessage, Conversation
 from app.tools import (
     get_cashflow_analysis,
@@ -22,7 +27,6 @@ def get_owned_conversation(
     conversation_id: int,
     user_id: int,
 ) -> Conversation | None:
-    """Return a conversation only when it belongs to the authenticated user."""
     return (
         db.query(Conversation)
         .filter(
@@ -38,13 +42,17 @@ def get_conversation_history(
     conversation_id: int,
     limit: int = 20,
 ) -> list[ChatMessage]:
-    """Return recent messages in chronological order."""
     limit = max(1, min(limit, 100))
 
     messages = (
         db.query(ChatMessage)
-        .filter(ChatMessage.conversation_id == conversation_id)
-        .order_by(ChatMessage.created_at.desc(), ChatMessage.id.desc())
+        .filter(
+            ChatMessage.conversation_id == conversation_id
+        )
+        .order_by(
+            ChatMessage.created_at.desc(),
+            ChatMessage.id.desc(),
+        )
         .limit(limit)
         .all()
     )
@@ -52,38 +60,90 @@ def get_conversation_history(
     return list(reversed(messages))
 
 
+def _add_cross_metric_evidence(
+    db: Session,
+    user_id: int,
+    result: dict,
+) -> dict:
+    """
+    Add deterministic cross-metric evidence without changing the primary
+    tool's identity.
+
+    This is intentionally limited to analytics functions whose user-scoped
+    interfaces already exist in CFOx.
+    """
+    if not isinstance(result, dict):
+        return result
+
+    try:
+        comparison = compare_periods(
+            db,
+            None,
+            user_id=user_id,
+        )
+        result["comparison"] = comparison
+        result["anomaly"] = calculate_anomaly_score(comparison)
+    except TypeError:
+        # Compatibility with an older analytics signature. The primary tool
+        # result is still valid, so do not make reasoning enrichment fatal.
+        pass
+
+    try:
+        result["cashflow"] = get_cashflow_analysis(
+            db,
+            user_id=user_id,
+        )
+    except (TypeError, KeyError):
+        pass
+
+    return result
+
+
 def build_tool_result(
     db: Session,
     question: str,
     user_id: int,
 ) -> tuple[str, dict | None]:
-    """Execute CFO tools against only the authenticated user's transactions."""
+    """Execute deterministic CFO tools against the authenticated user's data."""
+
     tool_name = route_question(question)
 
     if tool_name == "compare_payment_methods":
         return (
             tool_name,
-            analytics_compare_payment_methods(
-                db,
-                user_id=user_id,
-            ),
+            {
+                "payment_methods": analytics_compare_payment_methods(
+                    db,
+                    user_id=user_id,
+                )
+            },
         )
 
     if tool_name == "get_revenue_analysis":
+        result = get_revenue_analysis(
+            db,
+            user_id=user_id,
+        )
         return (
             tool_name,
-            get_revenue_analysis(
+            _add_cross_metric_evidence(
                 db,
-                user_id=user_id,
+                user_id,
+                result,
             ),
         )
 
     if tool_name == "get_cashflow_analysis":
+        result = get_cashflow_analysis(
+            db,
+            user_id=user_id,
+        )
         return (
             tool_name,
-            get_cashflow_analysis(
+            _add_cross_metric_evidence(
                 db,
-                user_id=user_id,
+                user_id,
+                result,
             ),
         )
 
@@ -98,23 +158,17 @@ def build_tool_result(
         )
 
     if tool_name == "get_anomaly_analysis":
-        # Preserve the existing CFO chat behavior:
-        # anomaly questions currently analyze UPI.
         comparison = compare_periods(
             db,
             "upi",
             user_id=user_id,
         )
-        anomaly = calculate_anomaly_score(
-            comparison,
-        )
-
         return (
             tool_name,
             {
                 "payment_method": "upi",
                 "comparison": comparison,
-                "anomaly": anomaly,
+                "anomaly": calculate_anomaly_score(comparison),
             },
         )
 
@@ -124,19 +178,41 @@ def build_tool_result(
 def build_history_context(
     messages: list[ChatMessage],
 ) -> str:
-    """Build a compact conversation context for the CFO model."""
+    """Compatibility helper for callers that need readable history."""
+
     if not messages:
         return ""
 
-    lines = []
-
-    for message in messages[-20:]:
-        role = "User" if message.role == "user" else "CFOx"
-        lines.append(
-            f"{role}: {message.content}"
+    return "\n".join(
+        (
+            "User" if message.role == "user" else "CFOx"
         )
+        + f": {message.content}"
+        for message in messages[-20:]
+    )
 
-    return "\n".join(lines)
+
+def _build_contextual_question(
+    question: str,
+    history: list[ChatMessage],
+    tool_name: str,
+    tool_result,
+) -> str:
+    reasoning_question = build_reasoning_question(
+        question,
+        history,
+    )
+
+    reasoning_context = serialize_reasoning_context(
+        tool_name,
+        tool_result,
+    )
+
+    return (
+        f"{reasoning_question}\n\n"
+        "Verified reasoning evidence:\n"
+        f"{reasoning_context}"
+    )
 
 
 def generate_stateful_cfo_answer(
@@ -145,7 +221,8 @@ def generate_stateful_cfo_answer(
     history: list[ChatMessage],
     user_id: int,
 ) -> tuple[str, str]:
-    """Generate an answer using verified, user-scoped financial data."""
+    """Generate a context-aware answer using verified user-scoped data."""
+
     reasoning_question = build_reasoning_question(
         question,
         history,
@@ -157,12 +234,72 @@ def generate_stateful_cfo_answer(
         user_id,
     )
 
+    contextual_question = _build_contextual_question(
+        question,
+        history,
+        tool_name,
+        tool_result,
+    )
+
     answer = generate_cfo_answer(
-        reasoning_question,
+        contextual_question,
         tool_result,
     )
 
     return tool_name, answer
+
+
+def prepare_cfo_exchange(
+    db: Session,
+    conversation_id: int,
+    question: str,
+    user_id: int,
+):
+    """
+    Prepare a persistent streaming exchange.
+
+    Nothing is persisted here; persistence happens only after successful
+    streaming so an interrupted generation does not create a fake assistant
+    message.
+    """
+    conversation = get_owned_conversation(
+        db,
+        conversation_id,
+        user_id,
+    )
+
+    if conversation is None:
+        raise ValueError("Conversation not found.")
+
+    history = get_conversation_history(
+        db,
+        conversation_id,
+    )
+
+    reasoning_question = build_reasoning_question(
+        question,
+        history,
+    )
+
+    tool_name, tool_result = build_tool_result(
+        db,
+        reasoning_question,
+        user_id,
+    )
+
+    contextual_question = _build_contextual_question(
+        question,
+        history,
+        tool_name,
+        tool_result,
+    )
+
+    return (
+        conversation,
+        contextual_question,
+        tool_name,
+        tool_result,
+    )
 
 
 def persist_cfo_exchange(
@@ -172,6 +309,7 @@ def persist_cfo_exchange(
     answer: str,
 ) -> tuple[ChatMessage, ChatMessage]:
     """Persist the user question and assistant answer atomically."""
+
     now = datetime.utcnow()
 
     user_message = ChatMessage(
@@ -195,57 +333,8 @@ def persist_cfo_exchange(
     db.add(conversation)
 
     db.commit()
+
     db.refresh(user_message)
     db.refresh(assistant_message)
 
     return user_message, assistant_message
-
-def prepare_cfo_exchange(
-    db: Session,
-    conversation_id: int,
-    question: str,
-    user_id: int,
-) -> tuple[
-    Conversation,
-    str,
-    str,
-    dict | None,
-]:
-    """
-    Validate the conversation and prepare the verified CFO
-    context required for streaming.
-    """
-
-    conversation = get_owned_conversation(
-        db,
-        conversation_id,
-        user_id,
-    )
-
-    if conversation is None:
-        raise ValueError(
-            "Conversation not found."
-        )
-
-    history = get_conversation_history(
-        db,
-        conversation_id,
-    )
-
-    reasoning_question = build_reasoning_question(
-        question,
-        history,
-    )
-
-    tool_name, tool_result = build_tool_result(
-        db,
-        reasoning_question,
-        user_id,
-    )
-
-    return (
-        conversation,
-        reasoning_question,
-        tool_name,
-        tool_result,
-    )

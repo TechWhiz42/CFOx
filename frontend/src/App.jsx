@@ -481,6 +481,19 @@ function getAIInsight(paymentMethod, options = {}, authFetch) {
     );
 }
 
+function getFinancialActions(paymentMethod, options = {}, authFetch) {
+    const query =
+        paymentMethod === "all"
+            ? ""
+            : `?payment_method=${encodeURIComponent(paymentMethod)}`;
+
+    return requestJson(
+        `/transactions/analytics/financial-actions${query}`,
+        options,
+        authFetch
+    );
+}
+
 function streamCFOChat(question, options = {}, authFetch) {
     return authFetch(`${API}/transactions/cfo/chat`, {
         method: "POST",
@@ -538,6 +551,10 @@ function App() {
 
     const [alerts, setAlerts] = useState(null);
     const [alertsLoading, setAlertsLoading] = useState(true);
+    const [financialActions, setFinancialActions] =
+        useState(null);
+    const [financialActionsLoading, setFinancialActionsLoading] =
+        useState(true);
     const [showSupportingSignals, setShowSupportingSignals] =
         useState(false);
 
@@ -738,6 +755,65 @@ function App() {
 
     /*
      * =====================================================
+     * FINANCIAL ACTIONS
+     * =====================================================
+     */
+
+    async function loadFinancialActions() {
+        const generation = requestGeneration.current;
+        const controller = beginRequest(
+            requestControllers,
+            "loadFinancialActions"
+        );
+
+        try {
+            setFinancialActionsLoading(true);
+
+            const response = await getFinancialActions(
+                paymentMethod,
+                {signal: controller.signal},
+                authFetch
+            );
+
+            const data = await parseApiResponse(
+                response,
+                "Financial actions request failed"
+            );
+
+            if (
+                isCurrentRequest(
+                    requestControllers,
+                    requestGeneration,
+                    "loadFinancialActions",
+                    controller,
+                    generation
+                )
+            ) {
+                setFinancialActions(data);
+            }
+        } catch (err) {
+            if (err?.name !== "AbortError") {
+                console.error(
+                    "Financial actions error:",
+                    err
+                );
+                setFinancialActions(null);
+            }
+        } finally {
+            if (
+                isSameRequest(
+                    requestControllers,
+                    "loadFinancialActions",
+                    controller
+                )
+            ) {
+                setFinancialActionsLoading(false);
+            }
+        }
+    }
+
+    /*
+     * =====================================================
      * INITIAL LOAD
      * =====================================================
      */
@@ -757,6 +833,7 @@ function App() {
         loadRevenueHistory();
         loadAnomaly();
         loadAlerts();
+        loadFinancialActions();
         loadConversations(true);
     }, [paymentMethod, authLoading, token, user]);
 
@@ -771,6 +848,7 @@ function App() {
             loadRevenueHistory(),
             loadAnomaly(),
             loadAlerts(),
+            loadFinancialActions(),
         ]);
     }
 
@@ -1611,6 +1689,7 @@ Do not invent causes, numbers, or facts.
                     loadRevenueHistory();
                     loadAnomaly();
                     loadAlerts();
+                    loadFinancialActions();
                 }}
             />
         );
@@ -1844,6 +1923,10 @@ Do not invent causes, numbers, or facts.
                     <div className="cfox-panel">
                         <ActionCenter
                             alerts={alerts}
+                            financialActions={financialActions}
+                            financialActionsLoading={
+                                financialActionsLoading
+                            }
                             paymentMethod={paymentMethod}
                             onInvestigate={investigateAction}
                             chatLoading={chatLoading}

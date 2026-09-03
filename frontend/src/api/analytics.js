@@ -14,8 +14,8 @@ export async function getDashboard(
         paymentMethod === "all"
             ? ""
             : `?payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return request(
         `/transactions/dashboard${query}`,
@@ -41,8 +41,8 @@ export async function getRevenueHistory(
         paymentMethod === "all"
             ? `?days=${days}`
             : `?days=${days}&payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return request(
         `/transactions/analytics/revenue-history${query}`,
@@ -58,8 +58,8 @@ export async function getAnomaly(
         paymentMethod === "all"
             ? ""
             : `?payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return request(
         `/transactions/analytics/anomaly${query}`,
@@ -75,8 +75,8 @@ export async function getAlerts(
         paymentMethod === "all"
             ? ""
             : `?payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return request(
         `/transactions/alerts${query}`,
@@ -92,8 +92,8 @@ export async function getAIInsight(
         paymentMethod === "all"
             ? ""
             : `?payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return request(
         `/transactions/analytics/ai-insight${query}`,
@@ -101,4 +101,38 @@ export async function getAIInsight(
     );
 }
 
-export { API };
+export async function getFinancialHealth(
+    paymentMethod = "all",
+    options = {},
+    authFetch
+) {
+    const query =
+        paymentMethod === "all"
+            ? ""
+            : `?payment_method=${encodeURIComponent(paymentMethod)}`;
+
+    return authFetch(
+        `${API}/transactions/analytics/financial-health${query}`,
+        options
+    );
+}
+
+export async function getFinancialActions(
+    paymentMethod = "all",
+    options = {},
+    authFetch
+) {
+    const query =
+        paymentMethod === "all"
+            ? ""
+            : `?payment_method=${encodeURIComponent(
+                paymentMethod
+            )}`;
+
+    return authFetch(
+        `${API}/transactions/analytics/financial-actions${query}`,
+        options
+    );
+}
+
+export {API};
