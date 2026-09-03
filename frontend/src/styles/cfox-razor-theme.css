@@ -1,0 +1,1030 @@
+/* =========================================================
+   CFOx PROFESSIONAL FINTECH DESIGN SYSTEM
+   Original CFOx styling inspired by premium payment dashboards.
+   ========================================================= */
+
+:root {
+    --cfox-bg: #f4f7fc;
+    --cfox-surface: #ffffff;
+    --cfox-surface-alt: #f8faff;
+    --cfox-surface-blue: #f0f5ff;
+
+    --cfox-text: #172b4d;
+    --cfox-text-strong: #0d1b32;
+    --cfox-muted: #68778d;
+    --cfox-muted-2: #8b98aa;
+
+    --cfox-border: #e3e9f2;
+    --cfox-border-strong: #d3dce9;
+
+    --cfox-blue: #2f66ff;
+    --cfox-blue-dark: #2457e6;
+    --cfox-blue-soft: #edf3ff;
+
+    --cfox-green: #16875a;
+    --cfox-green-soft: #ecfdf5;
+
+    --cfox-red: #d14343;
+    --cfox-red-soft: #fff1f2;
+
+    --cfox-amber: #a16207;
+    --cfox-amber-soft: #fffbeb;
+
+    --cfox-shadow:
+        0 1px 2px rgba(23, 43, 77, 0.03),
+        0 8px 24px rgba(23, 43, 77, 0.045);
+
+    --cfox-radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.cfox-app {
+    min-height: 100vh;
+    background:
+        radial-gradient(
+            circle at 50% -20%,
+            rgba(47, 102, 255, 0.055),
+            transparent 38%
+        ),
+        var(--cfox-bg);
+    color: var(--cfox-text);
+    font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.cfox-app[data-theme="dark"] {
+    --cfox-bg: #080d18;
+    --cfox-surface: #101827;
+    --cfox-surface-alt: #141e2d;
+    --cfox-surface-blue: #11203b;
+
+    --cfox-text: #e8edf5;
+    --cfox-text-strong: #ffffff;
+    --cfox-muted: #95a3b8;
+    --cfox-muted-2: #718096;
+
+    --cfox-border: #263348;
+    --cfox-border-strong: #35445c;
+
+    --cfox-blue: #4d7cff;
+    --cfox-blue-dark: #7095ff;
+    --cfox-blue-soft: rgba(77, 124, 255, 0.12);
+
+    --cfox-green: #34d399;
+    --cfox-green-soft: rgba(52, 211, 153, 0.11);
+
+    --cfox-red: #fb7185;
+    --cfox-red-soft: rgba(251, 113, 133, 0.11);
+
+    --cfox-amber: #fbbf24;
+    --cfox-amber-soft: rgba(251, 191, 36, 0.11);
+
+    --cfox-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.22),
+        0 12px 30px rgba(0, 0, 0, 0.17);
+}
+
+@media (prefers-color-scheme: dark) {
+    .cfox-app[data-theme="system"] {
+        --cfox-bg: #080d18;
+        --cfox-surface: #101827;
+        --cfox-surface-alt: #141e2d;
+        --cfox-surface-blue: #11203b;
+        --cfox-text: #e8edf5;
+        --cfox-text-strong: #ffffff;
+        --cfox-muted: #95a3b8;
+        --cfox-muted-2: #718096;
+        --cfox-border: #263348;
+        --cfox-border-strong: #35445c;
+        --cfox-blue: #4d7cff;
+        --cfox-blue-dark: #7095ff;
+        --cfox-blue-soft: rgba(77, 124, 255, 0.12);
+        --cfox-green: #34d399;
+        --cfox-green-soft: rgba(52, 211, 153, 0.11);
+        --cfox-red: #fb7185;
+        --cfox-red-soft: rgba(251, 113, 133, 0.11);
+        --cfox-amber: #fbbf24;
+        --cfox-amber-soft: rgba(251, 191, 36, 0.11);
+    }
+}
+
+/* ------------------------- Header ------------------------- */
+
+.cfox-header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
+    width: 100%;
+    min-height: 70px;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: color-mix(
+        in srgb,
+        var(--cfox-surface) 94%,
+        transparent
+    ) !important;
+    border-bottom: 1px solid var(--cfox-border) !important;
+    box-shadow: 0 1px 4px rgba(23, 43, 77, 0.035) !important;
+    backdrop-filter: blur(18px);
+}
+
+.cfox-header-inner {
+    width: min(1380px, calc(100% - 48px));
+    min-height: 70px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+}
+
+.cfox-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.cfox-brand-mark {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--cfox-blue);
+    color: white;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 6px 16px rgba(47, 102, 255, 0.22);
+}
+
+.cfox-brand-name {
+    color: var(--cfox-text-strong);
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+}
+
+.cfox-brand-subtitle {
+    margin-top: 2px;
+    color: var(--cfox-muted);
+    font-size: 10px;
+    font-weight: 550;
+}
+
+.cfox-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.cfox-account {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 3px 4px 3px 5px;
+    border: 1px solid var(--cfox-border);
+    border-radius: 999px;
+    background: var(--cfox-surface-alt);
+}
+
+.cfox-account-avatar {
+    width: 29px;
+    height: 29px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--cfox-blue);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.cfox-account-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cfox-account-label {
+    color: var(--cfox-muted);
+    font-size: 8px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: .09em;
+}
+
+.cfox-account-email {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--cfox-text);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.cfox-signout {
+    min-height: 29px !important;
+    padding: 0 10px !important;
+    border: 1px solid var(--cfox-border-strong) !important;
+    border-radius: 999px !important;
+    background: var(--cfox-surface) !important;
+    color: var(--cfox-text) !important;
+    font-size: 10px !important;
+    font-weight: 750 !important;
+    box-shadow: none !important;
+}
+
+.cfox-signout:hover:not(:disabled) {
+    border-color: var(--cfox-blue) !important;
+    color: var(--cfox-blue) !important;
+    background: var(--cfox-blue-soft) !important;
+}
+
+.cfox-filter-label {
+    color: var(--cfox-muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.cfox-select {
+    min-height: 38px;
+    padding: 0 34px 0 12px !important;
+    border: 1px solid var(--cfox-border-strong) !important;
+    border-radius: 8px !important;
+    background: var(--cfox-surface) !important;
+    color: var(--cfox-text) !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+}
+
+.cfox-system-status {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 11px;
+    border: 1px solid rgba(22, 135, 90, 0.15);
+    border-radius: 8px;
+    background: var(--cfox-green-soft);
+    color: var(--cfox-green);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.cfox-status-dot,
+.cfox-live-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.cfox-theme-control {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--cfox-border);
+    border-radius: 9px;
+    background: var(--cfox-surface-alt);
+}
+
+.cfox-theme-control button {
+    min-height: 29px !important;
+    padding: 0 9px !important;
+    border: 0 !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    color: var(--cfox-muted) !important;
+    font-size: 10px !important;
+    box-shadow: none !important;
+}
+
+.cfox-theme-control button.is-active {
+    background: var(--cfox-blue) !important;
+    color: white !important;
+}
+
+/* ------------------------- Main shell ------------------------- */
+
+.cfox-main {
+    width: min(1380px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 30px 0 64px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cfox-page-intro {
+    min-height: 116px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 26px 30px;
+    border: 1px solid var(--cfox-border);
+    border-radius: 14px;
+    background: var(--cfox-surface);
+    box-shadow: var(--cfox-shadow);
+}
+
+.cfox-eyebrow,
+.cfox-section-kicker {
+    color: var(--cfox-blue);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+}
+
+.cfox-page-intro h1 {
+    margin: 7px 0 5px;
+    color: var(--cfox-text-strong);
+    font-size: 29px;
+    line-height: 1.1;
+    letter-spacing: -0.035em;
+}
+
+.cfox-page-intro p {
+    margin: 0;
+    color: var(--cfox-muted);
+    font-size: 13px;
+}
+
+.cfox-period-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--cfox-border);
+    border-radius: 8px;
+    background: var(--cfox-surface-alt);
+    color: var(--cfox-muted);
+    font-size: 11px;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.cfox-period-badge .cfox-live-dot {
+    color: var(--cfox-green);
+    background: var(--cfox-green);
+    box-shadow: 0 0 0 3px var(--cfox-green-soft);
+}
+
+.cfox-kpi-panel {
+    padding: 22px 24px 24px;
+    border: 1px solid var(--cfox-border);
+    border-radius: var(--cfox-radius);
+    background: var(--cfox-surface);
+    box-shadow: var(--cfox-shadow);
+}
+
+.cfox-section-heading {
+    margin-bottom: 17px;
+}
+
+.cfox-section-heading h2 {
+    margin: 5px 0 0;
+    color: var(--cfox-text-strong);
+    font-size: 16px;
+    letter-spacing: -0.015em;
+}
+
+/* ------------------------- Panels / grids ------------------------- */
+
+.cfox-grid {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+}
+
+.cfox-grid-risk {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.cfox-grid-financial {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.cfox-panel {
+    min-width: 0;
+    min-height: 0;
+}
+
+.cfox-panel > section {
+    width: 100% !important;
+    height: 100%;
+    min-width: 0;
+    margin: 0 !important;
+    border: 1px solid var(--cfox-border) !important;
+    border-radius: var(--cfox-radius) !important;
+    background: var(--cfox-surface) !important;
+    color: var(--cfox-text) !important;
+    box-shadow: var(--cfox-shadow) !important;
+}
+
+.cfox-chart-panel > section {
+    overflow: hidden;
+}
+
+.cfox-ai-panel > section {
+    border-color: rgba(47, 102, 255, 0.18) !important;
+    background:
+        linear-gradient(
+            135deg,
+            var(--cfox-surface) 0%,
+            var(--cfox-surface-blue) 100%
+        ) !important;
+}
+
+.cfox-chat-panel > section {
+    min-height: 500px;
+}
+
+/* ------------------------- KPI component ------------------------- */
+
+.cfox-kpi-panel > section {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow: hidden;
+}
+
+.cfox-kpi-panel > section > div {
+    min-width: 0;
+    padding: 4px 22px 2px !important;
+    border: 0 !important;
+    border-right: 1px solid var(--cfox-border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+.cfox-kpi-panel > section > div:last-child {
+    border-right: 0 !important;
+}
+
+.cfox-metric-label {
+    margin-bottom: 8px;
+    color: var(--cfox-muted) !important;
+    font-size: 10px !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.cfox-metric-value {
+    color: var(--cfox-text-strong) !important;
+    font-size: 25px !important;
+    line-height: 1.1;
+    font-weight: 780;
+    letter-spacing: -0.03em;
+}
+
+.cfox-metric-subtitle {
+    margin-top: 7px;
+    color: var(--cfox-muted-2) !important;
+    font-size: 10px !important;
+}
+
+/* ------------------------- Generic controls ------------------------- */
+
+.cfox-app button {
+    font-family: inherit !important;
+}
+
+.cfox-app button:hover:not(:disabled) {
+    transition:
+        background 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease,
+        box-shadow 140ms ease,
+        transform 140ms ease;
+}
+
+.cfox-app input,
+.cfox-app textarea,
+.cfox-app select {
+    color: var(--cfox-text) !important;
+    background: var(--cfox-surface) !important;
+    border-color: var(--cfox-border-strong) !important;
+}
+
+.cfox-app input:focus,
+.cfox-app textarea:focus,
+.cfox-app select:focus {
+    outline: none !important;
+    border-color: var(--cfox-blue) !important;
+    box-shadow: 0 0 0 3px rgba(47, 102, 255, 0.11) !important;
+}
+
+/* ------------------------- Internal surfaces ------------------------- */
+
+.cfox-panel section h1,
+.cfox-panel section h2,
+.cfox-panel section h3,
+.cfox-panel section h4,
+.cfox-panel section strong {
+    color: var(--cfox-text-strong) !important;
+}
+
+.cfox-panel section p {
+    color: var(--cfox-muted);
+}
+
+.cfox-panel section button {
+    border-color: var(--cfox-border-strong) !important;
+    background: var(--cfox-surface) !important;
+    color: var(--cfox-text) !important;
+}
+
+.cfox-panel section button:hover:not(:disabled) {
+    border-color: var(--cfox-blue) !important;
+    background: var(--cfox-blue-soft) !important;
+    color: var(--cfox-blue) !important;
+}
+
+.cfox-ai-panel section button {
+    background: var(--cfox-blue) !important;
+    border-color: var(--cfox-blue) !important;
+    color: #fff !important;
+}
+
+.cfox-ai-panel section button:hover:not(:disabled) {
+    background: var(--cfox-blue-dark) !important;
+    border-color: var(--cfox-blue-dark) !important;
+    color: #fff !important;
+}
+
+/* Never allow internal content to force a grid column wider. */
+.cfox-panel *,
+.cfox-grid * {
+    max-width: 100%;
+}
+
+.cfox-panel img,
+.cfox-panel canvas,
+.cfox-panel svg {
+    max-width: 100%;
+}
+
+/* ------------------------- Responsive ------------------------- */
+
+@media (max-width: 1100px) {
+    .cfox-header-inner,
+    .cfox-main {
+        width: min(100% - 32px, 1380px);
+    }
+
+    .cfox-grid-risk,
+    .cfox-grid-financial {
+        grid-template-columns: 1fr;
+    }
+
+    .cfox-kpi-panel > section {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cfox-kpi-panel > section > div:nth-child(2) {
+        border-right: 0 !important;
+    }
+
+    .cfox-kpi-panel > section > div:nth-child(-n + 2) {
+        padding-bottom: 18px !important;
+        border-bottom: 1px solid var(--cfox-border) !important;
+    }
+}
+
+@media (max-width: 800px) {
+    .cfox-header {
+        position: relative !important;
+    }
+
+    .cfox-header-inner {
+        width: calc(100% - 24px);
+        min-height: auto;
+        padding: 12px 0;
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .cfox-header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+
+    .cfox-account-copy {
+        display: none;
+    }
+
+    .cfox-account {
+        padding-left: 3px;
+    }
+
+    .cfox-main {
+        width: calc(100% - 20px);
+        padding-top: 16px;
+        gap: 14px;
+    }
+
+    .cfox-page-intro {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 22px;
+    }
+}
+
+@media (max-width: 560px) {
+    .cfox-kpi-panel {
+        padding: 18px;
+    }
+
+    .cfox-kpi-panel > section {
+        grid-template-columns: 1fr;
+    }
+
+    .cfox-kpi-panel > section > div {
+        padding: 14px 0 !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--cfox-border) !important;
+    }
+
+    .cfox-kpi-panel > section > div:last-child {
+        border-bottom: 0 !important;
+    }
+
+    .cfox-page-intro h1 {
+        font-size: 25px;
+    }
+
+    .cfox-theme-control button {
+        padding: 0 7px !important;
+    }
+}
+
+/* ------------------------- Transactions ------------------------- */
+
+.cfox-transaction-panel {
+    overflow: hidden;
+}
+
+.cfox-transactions {
+    width: 100%;
+}
+
+.cfox-transaction-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 26px;
+    border-bottom: 1px solid var(--cfox-border);
+}
+
+.cfox-transaction-heading h2 {
+    margin: 4px 0 0;
+    color: var(--cfox-text-strong);
+    font-size: 20px;
+    letter-spacing: -0.025em;
+}
+
+.cfox-transaction-heading p {
+    margin: 7px 0 0;
+    color: var(--cfox-muted);
+    font-size: 13px;
+}
+
+.cfox-primary-button,
+.cfox-secondary-button {
+    min-height: 38px;
+    padding: 0 15px;
+    border: 1px solid var(--cfox-border-strong);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 750;
+    cursor: pointer;
+    transition: 140ms ease;
+}
+
+.cfox-primary-button {
+    border-color: var(--cfox-blue);
+    background: var(--cfox-blue);
+    color: #fff;
+    box-shadow: 0 7px 18px rgba(47, 102, 255, 0.16);
+}
+
+.cfox-primary-button:hover:not(:disabled) {
+    background: var(--cfox-blue-dark);
+    border-color: var(--cfox-blue-dark);
+    transform: translateY(-1px);
+}
+
+.cfox-secondary-button {
+    background: var(--cfox-surface);
+    color: var(--cfox-text);
+}
+
+.cfox-secondary-button:hover:not(:disabled) {
+    border-color: var(--cfox-blue);
+    color: var(--cfox-blue);
+    background: var(--cfox-blue-soft);
+}
+
+.cfox-primary-button:disabled,
+.cfox-secondary-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.cfox-transaction-form {
+    padding: 22px 26px;
+    background: var(--cfox-surface-alt);
+    border-bottom: 1px solid var(--cfox-border);
+}
+
+.cfox-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.cfox-form-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+}
+
+.cfox-form-grid label > span {
+    color: var(--cfox-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.cfox-form-grid input,
+.cfox-form-grid select {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 11px;
+    border: 1px solid var(--cfox-border-strong);
+    border-radius: 8px;
+    background: var(--cfox-surface) !important;
+    color: var(--cfox-text) !important;
+    font: inherit;
+    font-size: 12px;
+}
+
+.cfox-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.cfox-form-helper {
+    color: var(--cfox-muted-2);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.cfox-transaction-error,
+.cfox-transaction-notice {
+    margin: 16px 26px 0;
+    padding: 11px 13px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.cfox-transaction-error {
+    border: 1px solid color-mix(in srgb, var(--cfox-red) 25%, var(--cfox-border));
+    background: var(--cfox-red-soft);
+    color: var(--cfox-red);
+}
+
+.cfox-transaction-notice {
+    border: 1px solid color-mix(in srgb, var(--cfox-green) 25%, var(--cfox-border));
+    background: var(--cfox-green-soft);
+    color: var(--cfox-green);
+}
+
+.cfox-transaction-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.cfox-transaction-table {
+    width: 100%;
+    min-width: 860px;
+    border-collapse: collapse;
+}
+
+.cfox-transaction-table th {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--cfox-border);
+    background: var(--cfox-surface-alt);
+    color: var(--cfox-muted-2);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.07em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.cfox-transaction-table td {
+    padding: 15px 16px;
+    border-bottom: 1px solid var(--cfox-border);
+    color: var(--cfox-muted);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.cfox-transaction-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.cfox-transaction-table tbody tr:hover td {
+    background: var(--cfox-blue-soft);
+}
+
+.cfox-transaction-table td:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.cfox-transaction-table td:first-child strong {
+    color: var(--cfox-text);
+    font-size: 11px;
+}
+
+.cfox-transaction-table td:first-child span {
+    color: var(--cfox-muted-2);
+    font-size: 9px;
+}
+
+.cfox-amount-cell {
+    color: var(--cfox-text-strong) !important;
+    font-weight: 800;
+}
+
+.cfox-transaction-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.cfox-transaction-status-success {
+    background: var(--cfox-green-soft);
+    color: var(--cfox-green);
+}
+
+.cfox-transaction-status-failed {
+    background: var(--cfox-red-soft);
+    color: var(--cfox-red);
+}
+
+.cfox-transaction-status-refunded {
+    background: var(--cfox-amber-soft);
+    color: var(--cfox-amber);
+}
+
+.cfox-transaction-state {
+    padding: 20px 26px;
+}
+
+.cfox-table-skeleton {
+    height: 46px;
+    margin-bottom: 8px;
+    border-radius: 7px;
+    background: linear-gradient(
+        90deg,
+        var(--cfox-surface-alt),
+        var(--cfox-surface-blue),
+        var(--cfox-surface-alt)
+    );
+    background-size: 200% 100%;
+    animation: cfox-skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes cfox-skeleton {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+.cfox-transaction-empty {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.cfox-empty-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 14px;
+    border-radius: 12px;
+    background: var(--cfox-blue-soft);
+    color: var(--cfox-blue);
+    font-size: 17px;
+    font-weight: 850;
+}
+
+.cfox-transaction-empty h3 {
+    margin: 0;
+    color: var(--cfox-text-strong);
+    font-size: 16px;
+}
+
+.cfox-transaction-empty p {
+    max-width: 430px;
+    margin: 7px auto 18px;
+    color: var(--cfox-muted);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.cfox-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 26px;
+    border-top: 1px solid var(--cfox-border);
+    color: var(--cfox-muted-2);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.cfox-pagination > div {
+    display: flex;
+    gap: 8px;
+}
+
+.cfox-pagination .cfox-secondary-button {
+    min-height: 32px;
+    padding: 0 11px;
+    font-size: 10px;
+}
+
+@media (max-width: 900px) {
+    .cfox-form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .cfox-transaction-heading,
+    .cfox-transaction-form {
+        padding: 20px;
+    }
+
+    .cfox-transaction-heading {
+        flex-direction: column;
+    }
+
+    .cfox-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .cfox-form-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .cfox-transaction-error,
+    .cfox-transaction-notice {
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+
+    .cfox-pagination {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
