@@ -199,3 +199,53 @@ def persist_cfo_exchange(
     db.refresh(assistant_message)
 
     return user_message, assistant_message
+
+def prepare_cfo_exchange(
+    db: Session,
+    conversation_id: int,
+    question: str,
+    user_id: int,
+) -> tuple[
+    Conversation,
+    str,
+    str,
+    dict | None,
+]:
+    """
+    Validate the conversation and prepare the verified CFO
+    context required for streaming.
+    """
+
+    conversation = get_owned_conversation(
+        db,
+        conversation_id,
+        user_id,
+    )
+
+    if conversation is None:
+        raise ValueError(
+            "Conversation not found."
+        )
+
+    history = get_conversation_history(
+        db,
+        conversation_id,
+    )
+
+    reasoning_question = build_reasoning_question(
+        question,
+        history,
+    )
+
+    tool_name, tool_result = build_tool_result(
+        db,
+        reasoning_question,
+        user_id,
+    )
+
+    return (
+        conversation,
+        reasoning_question,
+        tool_name,
+        tool_result,
+    )

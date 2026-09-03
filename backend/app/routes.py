@@ -1046,3 +1046,103 @@ def send_cfo_conversation_message(
         "user_message": user_message,
         "assistant_message": assistant_message,
     }
+
+# =========================================================
+# PERSISTENT AI CFO CHAT — STREAMING
+# =========================================================
+
+@router.post(
+    "/cfo/conversations/{conversation_id}/messages/stream"
+)
+def stream_cfo_conversation_message(
+    conversation_id: int,
+    request: CFOConversationMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = request.content.strip()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message cannot be empty.",
+        )
+
+    try:
+        (
+            conversation,
+            reasoning_question,
+            tool_name,
+            tool_result,
+        ) = cfo_conversation_service.prepare_cfo_exchange(
+            db,
+            conversation_id,
+            question,
+            current_user.id,
+        )
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conversation not found.",
+        )
+
+    def generate():
+        assistant_answer = ""
+
+        try:
+            yield json.dumps(
+                {
+                    "type": "metadata",
+                    "conversation_id": conversation.id,
+                    "tool_used": tool_name,
+                }
+            ) + "\n"
+
+            for token in stream_cfo_answer(
+                reasoning_question,
+                tool_result,
+            ):
+                assistant_answer += token
+
+                yield json.dumps(
+                    {
+                        "type": "token",
+                        "content": token,
+                    }
+                ) + "\n"
+
+            assistant_answer = assistant_answer.strip()
+
+            if not assistant_answer:
+                raise RuntimeError(
+                    "CFO generated an empty response."
+                )
+
+            cfo_conversation_service.persist_cfo_exchange(
+                db,
+                conversation,
+                question,
+                assistant_answer,
+            )
+
+            yield json.dumps(
+                {
+                    "type": "done",
+                }
+            ) + "\n"
+
+        except Exception as exc:
+            db.rollback()
+
+            yield json.dumps(
+                {
+                    "type": "error",
+                    "detail": str(exc),
+                }
+            ) + "\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="application/x-ndjson",
+    )

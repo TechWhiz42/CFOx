@@ -1,18 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import { useAuth } from "./AuthContext";
+import {useEffect, useRef, useState} from "react";
+import {useAuth} from "./AuthContext";
 import Login from "./Login";
 import Register from "./Register";
 import {
     listConversations,
     createConversation,
     getConversation,
-    sendConversationMessage,
+    streamConversationMessage,
     deleteConversation,
 } from "./api/conversations";
+
 const API =
     import.meta.env.VITE_API_URL ||
     "http://127.0.0.1:8000";
-import { buildVerifiedEvidence, getPaymentMethodLabel } from "./utils/investigation";
+import {buildVerifiedEvidence, getPaymentMethodLabel} from "./utils/investigation";
 import {
     beginRequest,
     isCurrentRequest,
@@ -22,7 +23,7 @@ import {
     QUICK_QUESTIONS,
     TOOL_LABELS,
 } from "./utils/constants";
-import { parseApiResponse } from "./utils/apiResponse";
+import {parseApiResponse} from "./utils/apiResponse";
 
 import CFOChat from "./components/CFOChat";
 import Anomaly from "./components/Anomaly";
@@ -431,8 +432,8 @@ function getRevenueHistory(
         paymentMethod === "all"
             ? `?days=${days}`
             : `?days=${days}&payment_method=${encodeURIComponent(
-                  paymentMethod
-              )}`;
+                paymentMethod
+            )}`;
 
     return requestJson(
         `/transactions/analytics/revenue-history${query}`,
@@ -486,7 +487,7 @@ function streamCFOChat(question, options = {}, authFetch) {
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({question}),
         signal: options.signal,
     });
 }
@@ -573,7 +574,7 @@ function App() {
             setLoading(true);
             setError("");
 
-            const response = await getDashboard(paymentMethod, { signal: controller.signal }, authFetch);
+            const response = await getDashboard(paymentMethod, {signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -586,7 +587,7 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error("Dashboard error:", err);
-            setError("Unable to load financial data.");
+                setError("Unable to load financial data.");
             }
 
         } finally {
@@ -607,7 +608,7 @@ function App() {
         try {
             setPaymentMethodsLoading(true);
 
-            const response = await getPaymentMethods({ signal: controller.signal }, authFetch);
+            const response = await getPaymentMethods({signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -620,9 +621,9 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error(
-                "Payment method analytics error:",
-                err
-            );
+                    "Payment method analytics error:",
+                    err
+                );
             }
 
         } finally {
@@ -643,7 +644,7 @@ function App() {
         try {
             setRevenueHistoryLoading(true);
 
-            const response = await getRevenueHistory(paymentMethod, 30, { signal: controller.signal }, authFetch);
+            const response = await getRevenueHistory(paymentMethod, 30, {signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -656,10 +657,10 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error(
-                "Revenue history error:",
-                err
-            );
-            setRevenueHistory(null);
+                    "Revenue history error:",
+                    err
+                );
+                setRevenueHistory(null);
             }
 
         } finally {
@@ -680,7 +681,7 @@ function App() {
         try {
             setAnomalyLoading(true);
 
-            const response = await getAnomaly(paymentMethod, { signal: controller.signal }, authFetch);
+            const response = await getAnomaly(paymentMethod, {signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -693,7 +694,7 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error("Anomaly error:", err);
-            setAnomaly(null);
+                setAnomaly(null);
             }
 
         } finally {
@@ -714,7 +715,7 @@ function App() {
         try {
             setAlertsLoading(true);
 
-            const response = await getAlerts(paymentMethod, { signal: controller.signal }, authFetch);
+            const response = await getAlerts(paymentMethod, {signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -727,7 +728,7 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error("Alerts error:", err);
-            setAlerts(null);
+                setAlerts(null);
             }
 
         } finally {
@@ -803,7 +804,7 @@ function App() {
         try {
             setAiLoading(true);
 
-            const response = await getAIInsight(paymentMethod, { signal: controller.signal }, authFetch);
+            const response = await getAIInsight(paymentMethod, {signal: controller.signal}, authFetch);
 
             const data = await parseApiResponse(
                 response,
@@ -814,8 +815,8 @@ function App() {
                 typeof data === "string"
                     ? data
                     : data?.insight ??
-                      data?.answer ??
-                      data;
+                    data?.answer ??
+                    data;
 
             aiInsightCache.current[cacheKey] =
                 insight;
@@ -1092,164 +1093,145 @@ function App() {
      */
 
     async function sendChatQuestion(chatQuestion) {
-        if (
-            chatLoading ||
-            !chatQuestion.trim()
-        ) {
+        if (chatLoading || !chatQuestion.trim()) {
             return;
         }
 
-        const cleanQuestion =
-            chatQuestion.trim();
-
+        const cleanQuestion = chatQuestion.trim();
         setChatLoading(true);
         setConversationError("");
 
-        let conversationId =
-            activeConversationId;
+        let conversationId = activeConversationId;
+
+        const userMessageId = `user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const assistantMessageId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
         try {
             if (!conversationId) {
-                const created =
-                    await createConversation(
-                        makeConversationTitle(
-                            cleanQuestion
-                        ),
-                        authFetch
-                    );
-
-                conversationId =
-                    created.id;
-
-                setActiveConversationId(
-                    conversationId
-                );
-
-                setConversations(
-                    (previous) => [
-                        created,
-                        ...previous,
-                    ]
-                );
-            }
-
-            setMessages(
-                (previous) => [
-                    ...previous,
-                    {
-                        role: "user",
-                        content:
-                            cleanQuestion,
-                    },
-                    {
-                        role: "assistant",
-                        content: "",
-                        tool: null,
-                    },
-                ]
-            );
-
-            scrollToChatBox();
-
-            const response =
-                await sendConversationMessage(
-                    conversationId,
-                    cleanQuestion,
+                const created = await createConversation(
+                    makeConversationTitle(cleanQuestion),
                     authFetch
                 );
 
-            const assistant =
-                response?.assistant_message;
-
-            if (!assistant) {
-                throw new Error(
-                    "CFOx returned no assistant message."
-                );
+                conversationId = created.id;
+                setActiveConversationId(conversationId);
+                setConversations((previous) => [created, ...previous]);
             }
 
-            setMessages(
-                (previous) => {
-                    const updated = [
-                        ...previous,
-                    ];
+            setMessages((previous) => [
+                ...previous,
+                {
+                    id: userMessageId,
+                    role: "user",
+                    content: cleanQuestion,
+                    tool: null,
+                    created_at: new Date().toISOString(),
+                },
+                {
+                    id: assistantMessageId,
+                    role: "assistant",
+                    content: "",
+                    tool: null,
+                    streaming: true,
+                    created_at: new Date().toISOString(),
+                },
+            ]);
 
-                    const lastIndex =
-                        updated.length - 1;
+            scrollToChatBox();
 
-                    const last =
-                        updated[
-                            lastIndex
-                        ];
+            let streamedAnswer = "";
+            let streamedTool = null;
 
-                    if (
-                        last?.role ===
-                        "assistant"
-                    ) {
-                        updated[
-                            lastIndex
-                        ] = {
-                            ...last,
-                            id:
-                                assistant.id,
-                            content:
-                                assistant.content ||
-                                "",
-                            tool:
-                                response.tool_used ||
-                                null,
-                            created_at:
-                                assistant.created_at,
-                        };
-                    }
+            await streamConversationMessage(
+                conversationId,
+                cleanQuestion,
+                authFetch,
+                {
+                    onMetadata: (metadata) => {
+                        streamedTool = metadata?.tool_used || null;
 
-                    return updated;
+                        setMessages((previous) =>
+                            previous.map((message) =>
+                                message.id === assistantMessageId
+                                    ? {
+                                        ...message,
+                                        tool: streamedTool,
+                                    }
+                                    : message
+                            )
+                        );
+                    },
+
+                    onToken: (token) => {
+                        streamedAnswer += token;
+
+                        setMessages((previous) =>
+                            previous.map((message) =>
+                                message.id === assistantMessageId
+                                    ? {
+                                        ...message,
+                                        content: streamedAnswer,
+                                        streaming: true,
+                                    }
+                                    : message
+                            )
+                        );
+
+                        requestAnimationFrame(() => scrollToChatBox());
+                    },
+
+                    onDone: () => {
+                        setMessages((previous) =>
+                            previous.map((message) =>
+                                message.id === assistantMessageId
+                                    ? {
+                                        ...message,
+                                        content: streamedAnswer.trim(),
+                                        tool: streamedTool,
+                                        streaming: false,
+                                    }
+                                    : message
+                            )
+                        );
+                    },
+
+                    onError: (error) => {
+                        throw error;
+                    },
                 }
             );
 
-            // The backend updates updated_at and may have
-            // generated/retained the conversation title.
+            if (!streamedAnswer.trim()) {
+                throw new Error("CFOx returned an empty response.");
+            }
+
+            const savedConversation = await getConversation(
+                conversationId,
+                authFetch
+            );
+
+            setActiveConversationId(savedConversation.id);
+            setMessages(mapConversationMessages(savedConversation.messages));
+
             await loadConversations();
         } catch (err) {
-            console.error(
-                "Persistent chat error:",
-                err
-            );
+            console.error("Persistent streaming chat error:", err);
 
-            setMessages(
-                (previous) => {
-                    const updated = [
-                        ...previous,
-                    ];
-
-                    const lastIndex =
-                        updated.length - 1;
-
-                    const last =
-                        updated[
-                            lastIndex
-                        ];
-
-                    if (
-                        last?.role ===
-                        "assistant"
-                    ) {
-                        updated[
-                            lastIndex
-                        ] = {
-                            ...last,
-                            content:
-                                "Sorry, I couldn't retrieve the financial analysis right now.",
+            setMessages((previous) =>
+                previous.map((message) =>
+                    message.id === assistantMessageId
+                        ? {
+                            ...message,
+                            content: "Sorry, I couldn't retrieve the financial analysis right now.",
                             tool: null,
-                        };
-                    }
-
-                    return updated;
-                }
+                            streaming: false,
+                        }
+                        : message
+                )
             );
 
             setConversationError(
-                err?.message ||
-                    "Unable to complete the CFO analysis."
+                err?.message || "Unable to complete the CFO analysis."
             );
         } finally {
             setChatLoading(false);
@@ -1376,32 +1358,32 @@ Rules:
         const revenueChange =
             evidenceByLabel[
                 "Revenue change"
-            ] ?? null;
+                ] ?? null;
 
         const previousRevenue =
             evidenceByLabel[
                 "Previous revenue"
-            ] ?? null;
+                ] ?? null;
 
         const currentRevenue =
             evidenceByLabel[
                 "Current revenue"
-            ] ?? null;
+                ] ?? null;
 
         const currentFailureRate =
             evidenceByLabel[
                 "Current failure rate"
-            ] ?? null;
+                ] ?? null;
 
         const failureRateChange =
             evidenceByLabel[
                 "Failure rate change"
-            ] ?? null;
+                ] ?? null;
 
         const riskScore =
             evidenceByLabel[
                 "Risk score"
-            ] ?? null;
+                ] ?? null;
 
         const verifiedData = {
             payment_method:
@@ -1409,17 +1391,17 @@ Rules:
                     ? "all"
                     : paymentMethod,
             revenue_change_percent:
-                revenueChange,
+            revenueChange,
             previous_revenue:
-                previousRevenue,
+            previousRevenue,
             current_revenue:
-                currentRevenue,
+            currentRevenue,
             current_failure_rate:
-                currentFailureRate,
+            currentFailureRate,
             failure_rate_change_percentage_points:
-                failureRateChange,
+            failureRateChange,
             cashflow_risk_score:
-                riskScore,
+            riskScore,
         };
 
         const question = `
@@ -1539,11 +1521,11 @@ Revenue change: ₹${Number(
 
 Verified reasons:
 ${(data.reasons || [])
-    .map(
-        (reason) =>
-            `- ${reason}`
-    )
-    .join("\n")}
+            .map(
+                (reason) =>
+                    `- ${reason}`
+            )
+            .join("\n")}
 
 Explain what this means for the business and give practical actions. Use ONLY these verified facts. Do not invent causes that are not present in the data.
 `.trim();
@@ -1565,11 +1547,11 @@ Explain what this means for the business and give practical actions. Use ONLY th
             alert.evidence
         )
             ? alert.evidence
-                  .map(
-                      (item) =>
-                          `- ${item.label}: ${item.value}`
-                  )
-                  .join("\n")
+                .map(
+                    (item) =>
+                        `- ${item.label}: ${item.value}`
+                )
+                .join("\n")
             : "";
 
         const questionText = `
@@ -1610,7 +1592,7 @@ Do not invent causes, numbers, or facts.
     }
 
     if (loading && token && user) {
-        return <LoadingScreen />;
+        return <LoadingScreen/>;
     }
 
     /*
@@ -1681,7 +1663,7 @@ Do not invent causes, numbers, or facts.
                 total +
                 Number(
                     day.predicted_revenue ||
-                        0
+                    0
                 ),
             0
         );
@@ -1689,19 +1671,19 @@ Do not invent causes, numbers, or facts.
     const recentAverage =
         Number(
             forecast.recent_average ||
-                0
+            0
         );
 
     const cashflowRisk =
         String(
             cashflow.risk ||
-                "unknown"
+            "unknown"
         ).toLowerCase();
 
     const cashflowScore =
         Number(
             cashflow.risk_score ||
-                0
+            0
         );
 
     /*
@@ -1730,8 +1712,8 @@ Do not invent causes, numbers, or facts.
             <div className="cfox-auth-page">
                 <style>{AUTH_STYLES}</style>
 
-                <div className="cfox-auth-glow cfox-auth-glow-one" />
-                <div className="cfox-auth-glow cfox-auth-glow-two" />
+                <div className="cfox-auth-glow cfox-auth-glow-one"/>
+                <div className="cfox-auth-glow cfox-auth-glow-two"/>
 
                 <div className="cfox-auth-shell">
                     <div className="cfox-auth-brand-panel">
@@ -1751,7 +1733,7 @@ Do not invent causes, numbers, or facts.
                             </div>
                             <h1>
                                 Understand your money.
-                                <br />
+                                <br/>
                                 <span>Act with confidence.</span>
                             </h1>
                             <p>
@@ -1828,7 +1810,7 @@ Do not invent causes, numbers, or facts.
                     </div>
 
                     <div className="cfox-period-badge">
-                        <span className="cfox-live-dot" />
+                        <span className="cfox-live-dot"/>
                         Live financial data
                     </div>
                 </section>
