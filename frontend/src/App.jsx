@@ -866,6 +866,11 @@ function App() {
             },
         ]);
 
+        // Bring the chat panel into view for investigations and
+        // quick actions. The requestAnimationFrame inside
+        // scrollToChatBox waits until React has rendered the new messages.
+        scrollToChatBox();
+
         try {
             const response = await streamCFOChat(cleanQuestion, {}, authFetch);
 

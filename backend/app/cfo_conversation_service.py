@@ -2,15 +2,20 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.analytics import (
+    calculate_anomaly_score,
+    compare_periods,
+    compare_payment_methods as analytics_compare_payment_methods,
+)
 from app.chat_service import route_question, generate_cfo_answer
+from app.cfo_reasoning import build_reasoning_question
 from app.models import ChatMessage, Conversation
 from app.tools import (
     get_cashflow_analysis,
     get_failed_transactions,
     get_revenue_analysis,
-    compare_payment_methods,
 )
-from app.cfo_reasoning import build_reasoning_question
+
 
 def get_owned_conversation(
     db: Session,
@@ -47,34 +52,89 @@ def get_conversation_history(
     return list(reversed(messages))
 
 
-def build_tool_result(db: Session, question: str):
-    """Execute the same deterministic financial tool selection used by CFO chat."""
+def build_tool_result(
+    db: Session,
+    question: str,
+    user_id: int,
+) -> tuple[str, dict | None]:
+    """Execute CFO tools against only the authenticated user's transactions."""
     tool_name = route_question(question)
 
     if tool_name == "compare_payment_methods":
-        return tool_name, compare_payment_methods(db)
+        return (
+            tool_name,
+            analytics_compare_payment_methods(
+                db,
+                user_id=user_id,
+            ),
+        )
 
     if tool_name == "get_revenue_analysis":
-        return tool_name, get_revenue_analysis(db)
+        return (
+            tool_name,
+            get_revenue_analysis(
+                db,
+                user_id=user_id,
+            ),
+        )
 
     if tool_name == "get_cashflow_analysis":
-        return tool_name, get_cashflow_analysis(db)
+        return (
+            tool_name,
+            get_cashflow_analysis(
+                db,
+                user_id=user_id,
+            ),
+        )
 
     if tool_name == "get_failed_transactions":
-        return tool_name, get_failed_transactions(db, hours=24)
+        return (
+            tool_name,
+            get_failed_transactions(
+                db,
+                hours=24,
+                user_id=user_id,
+            ),
+        )
+
+    if tool_name == "get_anomaly_analysis":
+        # Preserve the existing CFO chat behavior:
+        # anomaly questions currently analyze UPI.
+        comparison = compare_periods(
+            db,
+            "upi",
+            user_id=user_id,
+        )
+        anomaly = calculate_anomaly_score(
+            comparison,
+        )
+
+        return (
+            tool_name,
+            {
+                "payment_method": "upi",
+                "comparison": comparison,
+                "anomaly": anomaly,
+            },
+        )
 
     return tool_name, None
 
 
-def build_history_context(messages: list[ChatMessage]) -> str:
+def build_history_context(
+    messages: list[ChatMessage],
+) -> str:
     """Build a compact conversation context for the CFO model."""
     if not messages:
         return ""
 
     lines = []
+
     for message in messages[-20:]:
         role = "User" if message.role == "user" else "CFOx"
-        lines.append(f"{role}: {message.content}")
+        lines.append(
+            f"{role}: {message.content}"
+        )
 
     return "\n".join(lines)
 
@@ -83,28 +143,22 @@ def generate_stateful_cfo_answer(
     db: Session,
     question: str,
     history: list[ChatMessage],
+    user_id: int,
 ) -> tuple[str, str]:
-    """Generate an answer using the existing verified-data CFO path.
+    """Generate an answer using verified, user-scoped financial data."""
+    reasoning_question = build_reasoning_question(
+        question,
+        history,
+    )
 
-    History is supplied as conversational context, while the current
-    financial tool result remains the source of financial facts.
-    """
-    tool_name, tool_result = build_tool_result(db, question)
-
-    history_context = build_history_context(history)
-
-    if history_context:
-        contextual_question = (
-            "Previous conversation:\n"
-            f"{history_context}\n\n"
-            "Current question:\n"
-            f"{question}"
-        )
-    else:
-        contextual_question = question
+    tool_name, tool_result = build_tool_result(
+        db,
+        reasoning_question,
+        user_id,
+    )
 
     answer = generate_cfo_answer(
-        contextual_question,
+        reasoning_question,
         tool_result,
     )
 
@@ -145,27 +199,3 @@ def persist_cfo_exchange(
     db.refresh(assistant_message)
 
     return user_message, assistant_message
-
-def generate_stateful_cfo_answer(
-    db,
-    question,
-    history,
-    user_id,
-):
-    reasoning_question = build_reasoning_question(
-        question,
-        history,
-    )
-
-    tool_name, tool_result = build_tool_result(
-        db,
-        reasoning_question,
-        user_id,
-    )
-
-    answer = generate_cfo_answer(
-        reasoning_question,
-        tool_result,
-    )
-
-    return tool_name, answer

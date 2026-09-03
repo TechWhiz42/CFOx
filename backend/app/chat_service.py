@@ -100,8 +100,8 @@ def _has_verified_context(text: str) -> bool:
     verified financial evidence.
 
     These requests must not trigger another analytics
-    operation, because doing so could replace the supplied
-    evidence with unrelated aggregate data.
+    operation because the supplied evidence is already
+    authoritative for the investigation.
     """
 
     return any(
@@ -114,9 +114,7 @@ def route_question(question: str) -> str:
     """
     Deterministically classify a CFO question.
 
-    The router intentionally does NOT use an LLM.
-
-    Priority is based on specificity:
+    Priority:
 
         verified context
             ↓
@@ -131,9 +129,6 @@ def route_question(question: str) -> str:
         revenue
             ↓
         none
-
-    Returning "none" means no additional financial tool
-    should be executed.
     """
 
     if not isinstance(question, str):
@@ -147,20 +142,14 @@ def route_question(question: str) -> str:
     # -----------------------------------------------------
     # VERIFIED CONTEXT
     # -----------------------------------------------------
-    #
-    # The UI may already provide verified evidence.
-    # Never replace that evidence with another aggregate
-    # analytics query.
-    #
+
     if _has_verified_context(text):
         return "none"
 
     # -----------------------------------------------------
     # FAILED TRANSACTIONS
     # -----------------------------------------------------
-    #
-    # These are highly specific operational questions.
-    #
+
     if _contains_pattern(
         text,
         FAILED_TRANSACTION_PATTERNS,
@@ -170,10 +159,7 @@ def route_question(question: str) -> str:
     # -----------------------------------------------------
     # ANOMALY
     # -----------------------------------------------------
-    #
-    # Anomaly questions should be handled separately from
-    # general payment-method performance.
-    #
+
     if _contains_pattern(
         text,
         ANOMALY_PATTERNS,
@@ -183,10 +169,7 @@ def route_question(question: str) -> str:
     # -----------------------------------------------------
     # PAYMENT METHODS
     # -----------------------------------------------------
-    #
-    # This covers UPI/card/netbanking comparisons and
-    # payment-method performance.
-    #
+
     if _contains_pattern(
         text,
         PAYMENT_METHOD_PATTERNS,
@@ -196,7 +179,7 @@ def route_question(question: str) -> str:
     # -----------------------------------------------------
     # CASH FLOW / FINANCIAL RISK
     # -----------------------------------------------------
-    #
+
     if _contains_pattern(
         text,
         CASHFLOW_PATTERNS,
@@ -206,16 +189,12 @@ def route_question(question: str) -> str:
     # -----------------------------------------------------
     # REVENUE
     # -----------------------------------------------------
-    #
+
     if _contains_pattern(
         text,
         REVENUE_PATTERNS,
     ):
         return "get_revenue_analysis"
-
-    # -----------------------------------------------------
-    # GENERAL / UNKNOWN
-    # -----------------------------------------------------
 
     return "none"
 
@@ -258,6 +237,71 @@ Rules:
 """.strip()
 
 
+def _extract_chunk_content(chunk) -> str:
+    """
+    Extract generated text from both old-style dictionary
+    Ollama responses and newer ChatResponse objects.
+
+    Supported shapes:
+
+        {
+            "message": {
+                "content": "..."
+            }
+        }
+
+    and:
+
+        ChatResponse(
+            message=Message(
+                content="..."
+            )
+        )
+    """
+
+    if chunk is None:
+        return ""
+
+    # -----------------------------------------------------
+    # Dictionary response
+    # -----------------------------------------------------
+
+    if isinstance(chunk, dict):
+        message = chunk.get("message")
+
+        if isinstance(message, dict):
+            content = message.get("content", "")
+
+            if isinstance(content, str):
+                return content
+
+        return ""
+
+    # -----------------------------------------------------
+    # Object response
+    # -----------------------------------------------------
+
+    message = getattr(
+        chunk,
+        "message",
+        None,
+    )
+
+    if message is None:
+        return ""
+
+    content = getattr(
+        message,
+        "content",
+        "",
+    )
+
+    if isinstance(content, str):
+        return content
+
+    return ""
+
+
 def stream_cfo_answer(
     question: str,
     tool_result=None,
@@ -265,7 +309,8 @@ def stream_cfo_answer(
     """
     Stream the final CFO answer from Ollama.
 
-    This is the only LLM call in the request path.
+    Supports both dictionary responses and Ollama
+    ChatResponse objects.
     """
 
     prompt = _build_cfo_prompt(
@@ -289,15 +334,9 @@ def stream_cfo_answer(
     )
 
     for chunk in response:
-        if not isinstance(chunk, dict):
-            continue
-
-        message = chunk.get("message")
-
-        if not isinstance(message, dict):
-            continue
-
-        content = message.get("content", "")
+        content = _extract_chunk_content(
+            chunk
+        )
 
         if content:
             yield content

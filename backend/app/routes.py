@@ -748,6 +748,7 @@ def send_cfo_conversation_message(
             db,
             question,
             history,
+            current_user.id,
         )
 
         user_message, assistant_message = persist_cfo_exchange(
