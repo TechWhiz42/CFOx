@@ -28,13 +28,17 @@ def compare_payment_methods(db: Session, user_id: int | None = None) -> dict:
 
 def get_revenue_analysis(db: Session, user_id: int | None = None) -> dict:
     """
-    Return payment-method performance and revenue forecast.
+    Return total revenue, payment-method performance,
+    and revenue forecast.
 
-    Payment-method comparison and forecasting are each calculated
-    once and then returned together.
+    All financial values are calculated by the backend.
+    The language model should only explain the verified results.
     """
 
-    payment_methods = analytics_compare_payment_methods(db, user_id=user_id)
+    payment_methods = analytics_compare_payment_methods(
+        db,
+        user_id=user_id,
+    )
 
     forecast = forecast_revenue(
         db,
@@ -43,7 +47,54 @@ def get_revenue_analysis(db: Session, user_id: int | None = None) -> dict:
         user_id=user_id,
     )
 
+    current_period_revenue = sum(
+        method_data["current_period"]["revenue"]
+        for method_data in payment_methods.values()
+    )
+
+    previous_period_revenue = sum(
+        method_data["previous_period"]["revenue"]
+        for method_data in payment_methods.values()
+    )
+
+    revenue_change = (
+        current_period_revenue - previous_period_revenue
+    )
+
+    if previous_period_revenue != 0:
+        revenue_change_percentage = (
+            revenue_change / previous_period_revenue
+        ) * 100
+    else:
+        revenue_change_percentage = None
+
     return {
+        "current_period": {
+            "total_revenue": round(
+                current_period_revenue,
+                2,
+            ),
+        },
+        "previous_period": {
+            "total_revenue": round(
+                previous_period_revenue,
+                2,
+            ),
+        },
+        "changes": {
+            "revenue_change": round(
+                revenue_change,
+                2,
+            ),
+            "revenue_change_percentage": (
+                round(
+                    revenue_change_percentage,
+                    2,
+                )
+                if revenue_change_percentage is not None
+                else None
+            ),
+        },
         "payment_methods": payment_methods,
         "forecast": forecast,
     }

@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
 import Login from "./Login";
 import Register from "./Register";
+import {
+    listConversations,
+    createConversation,
+    getConversation,
+    sendConversationMessage,
+    deleteConversation,
+} from "./api/conversations";
 const API =
     import.meta.env.VITE_API_URL ||
     "http://127.0.0.1:8000";
@@ -543,6 +550,14 @@ function App() {
     const [chatLoading, setChatLoading] = useState(false);
     const [messages, setMessages] = useState([]);
 
+    const [conversations, setConversations] = useState([]);
+    const [activeConversationId, setActiveConversationId] =
+        useState(null);
+    const [conversationsLoading, setConversationsLoading] =
+        useState(false);
+    const [conversationError, setConversationError] =
+        useState("");
+
     /*
      * =====================================================
      * DASHBOARD
@@ -741,6 +756,7 @@ function App() {
         loadRevenueHistory();
         loadAnomaly();
         loadAlerts();
+        loadConversations(true);
     }, [paymentMethod, authLoading, token, user]);
 
     async function refreshFinancialData() {
@@ -837,6 +853,240 @@ function App() {
 
     /*
      * =====================================================
+     * PERSISTENT CFO CONVERSATIONS
+     * =====================================================
+     */
+
+    function mapConversationMessages(items) {
+        if (!Array.isArray(items)) {
+            return [];
+        }
+
+        return items.map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content || "",
+            tool: null,
+            created_at: message.created_at,
+        }));
+    }
+
+    function makeConversationTitle(text) {
+        const clean = text
+            .replace(/\\s+/g, " ")
+            .trim();
+
+        if (!clean) {
+            return "New conversation";
+        }
+
+        if (clean.length <= 60) {
+            return clean;
+        }
+
+        return `${clean.slice(0, 57)}...`;
+    }
+
+    async function loadConversations(
+        selectFirst = false
+    ) {
+        if (!token || !user) {
+            return [];
+        }
+
+        setConversationsLoading(true);
+        setConversationError("");
+
+        try {
+            const data =
+                await listConversations(
+                    authFetch
+                );
+
+            const items =
+                Array.isArray(data)
+                    ? data
+                    : [];
+
+            setConversations(items);
+
+            if (
+                selectFirst &&
+                items.length > 0
+            ) {
+                await selectConversation(
+                    items[0].id
+                );
+            }
+
+            return items;
+        } catch (err) {
+            console.error(
+                "Conversation list error:",
+                err
+            );
+
+            setConversationError(
+                "Unable to load saved conversations."
+            );
+
+            return [];
+        } finally {
+            setConversationsLoading(
+                false
+            );
+        }
+    }
+
+    async function startNewConversation() {
+        if (
+            chatLoading ||
+            conversationsLoading
+        ) {
+            return;
+        }
+
+        setConversationError("");
+
+        try {
+            const conversation =
+                await createConversation(
+                    "New conversation",
+                    authFetch
+                );
+
+            setConversations(
+                (previous) => [
+                    conversation,
+                    ...previous,
+                ]
+            );
+
+            setActiveConversationId(
+                conversation.id
+            );
+
+            setMessages([]);
+            setQuestion("");
+        } catch (err) {
+            console.error(
+                "Create conversation error:",
+                err
+            );
+
+            setConversationError(
+                "Unable to create a new conversation."
+            );
+        }
+    }
+
+    async function selectConversation(
+        conversationId
+    ) {
+        if (
+            chatLoading ||
+            !conversationId
+        ) {
+            return;
+        }
+
+        setConversationsLoading(true);
+        setConversationError("");
+
+        try {
+            const conversation =
+                await getConversation(
+                    conversationId,
+                    authFetch
+                );
+
+            setActiveConversationId(
+                conversation.id
+            );
+
+            setMessages(
+                mapConversationMessages(
+                    conversation.messages
+                )
+            );
+
+            setQuestion("");
+        } catch (err) {
+            console.error(
+                "Conversation load error:",
+                err
+            );
+
+            setConversationError(
+                "Unable to open that conversation."
+            );
+        } finally {
+            setConversationsLoading(
+                false
+            );
+        }
+    }
+
+    async function removeConversation(
+        conversationId
+    ) {
+        if (
+            chatLoading ||
+            !conversationId
+        ) {
+            return;
+        }
+
+        setConversationError("");
+
+        try {
+            await deleteConversation(
+                conversationId,
+                authFetch
+            );
+
+            const remaining =
+                conversations.filter(
+                    (conversation) =>
+                        conversation.id !==
+                        conversationId
+                );
+
+            setConversations(
+                remaining
+            );
+
+            if (
+                activeConversationId ===
+                conversationId
+            ) {
+                setActiveConversationId(
+                    null
+                );
+                setMessages([]);
+
+                if (
+                    remaining.length > 0
+                ) {
+                    await selectConversation(
+                        remaining[0].id
+                    );
+                }
+            }
+        } catch (err) {
+            console.error(
+                "Conversation delete error:",
+                err
+            );
+
+            setConversationError(
+                "Unable to delete that conversation."
+            );
+        }
+    }
+
+    /*
+     * =====================================================
      * CHAT
      * =====================================================
      */
@@ -849,163 +1099,158 @@ function App() {
             return;
         }
 
-        const cleanQuestion = chatQuestion.trim();
+        const cleanQuestion =
+            chatQuestion.trim();
 
         setChatLoading(true);
+        setConversationError("");
 
-        setMessages((previous) => [
-            ...previous,
-            {
-                role: "user",
-                content: cleanQuestion,
-            },
-            {
-                role: "assistant",
-                content: "",
-                tool: null,
-            },
-        ]);
-
-        // Bring the chat panel into view for investigations and
-        // quick actions. The requestAnimationFrame inside
-        // scrollToChatBox waits until React has rendered the new messages.
-        scrollToChatBox();
+        let conversationId =
+            activeConversationId;
 
         try {
-            const response = await streamCFOChat(cleanQuestion, {}, authFetch);
+            if (!conversationId) {
+                const created =
+                    await createConversation(
+                        makeConversationTitle(
+                            cleanQuestion
+                        ),
+                        authFetch
+                    );
 
-            if (!response.ok) {
-                throw new Error(
-                    `Chat request failed: ${response.status}`
+                conversationId =
+                    created.id;
+
+                setActiveConversationId(
+                    conversationId
+                );
+
+                setConversations(
+                    (previous) => [
+                        created,
+                        ...previous,
+                    ]
                 );
             }
 
-            if (!response.body) {
-                throw new Error(
-                    "Streaming is not supported by this browser."
-                );
-            }
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-
-            let buffer = "";
-
-            while (true) {
-                const { value, done } =
-                    await reader.read();
-
-                if (done) {
-                    break;
-                }
-
-                buffer += decoder.decode(value, {
-                    stream: true,
-                });
-
-                const lines = buffer.split("\n");
-
-                buffer = lines.pop() || "";
-
-                for (const line of lines) {
-                    if (!line.trim()) {
-                        continue;
-                    }
-
-                    try {
-                        const data = JSON.parse(line);
-
-                        if (data.type === "metadata") {
-                            const tool =
-                                data.tool_used || "none";
-
-                            setMessages((previous) => {
-                                const updated = [
-                                    ...previous,
-                                ];
-
-                                const lastIndex =
-                                    updated.length - 1;
-
-                                const last =
-                                    updated[lastIndex];
-
-                                if (
-                                    last?.role ===
-                                    "assistant"
-                                ) {
-                                    updated[lastIndex] = {
-                                        ...last,
-                                        tool,
-                                    };
-                                }
-
-                                return updated;
-                            });
-                        }
-
-                        if (data.type === "token") {
-                            setMessages((previous) => {
-                                const updated = [
-                                    ...previous,
-                                ];
-
-                                const lastIndex =
-                                    updated.length - 1;
-
-                                const last =
-                                    updated[lastIndex];
-
-                                if (
-                                    last?.role ===
-                                    "assistant"
-                                ) {
-                                    updated[lastIndex] = {
-                                        ...last,
-                                        content:
-                                            last.content +
-                                            data.content,
-                                    };
-                                }
-
-                                return updated;
-                            });
-                        }
-                    } catch (err) {
-                        console.error(
-                            "Invalid stream data:",
-                            line,
-                            err
-                        );
-                    }
-                }
-            }
-        } catch (err) {
-            console.error("Chat error:", err);
-
-            setMessages((previous) => {
-                const updated = [...previous];
-
-                const lastIndex =
-                    updated.length - 1;
-
-                const last =
-                    updated[lastIndex];
-
-                if (
-                    last?.role ===
-                    "assistant"
-                ) {
-                    updated[lastIndex] = {
-                        ...last,
+            setMessages(
+                (previous) => [
+                    ...previous,
+                    {
+                        role: "user",
                         content:
-                            "Sorry, I couldn't retrieve the financial analysis right now.",
+                            cleanQuestion,
+                    },
+                    {
+                        role: "assistant",
+                        content: "",
                         tool: null,
-                    };
-                }
+                    },
+                ]
+            );
 
-                return updated;
-            });
+            scrollToChatBox();
+
+            const response =
+                await sendConversationMessage(
+                    conversationId,
+                    cleanQuestion,
+                    authFetch
+                );
+
+            const assistant =
+                response?.assistant_message;
+
+            if (!assistant) {
+                throw new Error(
+                    "CFOx returned no assistant message."
+                );
+            }
+
+            setMessages(
+                (previous) => {
+                    const updated = [
+                        ...previous,
+                    ];
+
+                    const lastIndex =
+                        updated.length - 1;
+
+                    const last =
+                        updated[
+                            lastIndex
+                        ];
+
+                    if (
+                        last?.role ===
+                        "assistant"
+                    ) {
+                        updated[
+                            lastIndex
+                        ] = {
+                            ...last,
+                            id:
+                                assistant.id,
+                            content:
+                                assistant.content ||
+                                "",
+                            tool:
+                                response.tool_used ||
+                                null,
+                            created_at:
+                                assistant.created_at,
+                        };
+                    }
+
+                    return updated;
+                }
+            );
+
+            // The backend updates updated_at and may have
+            // generated/retained the conversation title.
+            await loadConversations();
+        } catch (err) {
+            console.error(
+                "Persistent chat error:",
+                err
+            );
+
+            setMessages(
+                (previous) => {
+                    const updated = [
+                        ...previous,
+                    ];
+
+                    const lastIndex =
+                        updated.length - 1;
+
+                    const last =
+                        updated[
+                            lastIndex
+                        ];
+
+                    if (
+                        last?.role ===
+                        "assistant"
+                    ) {
+                        updated[
+                            lastIndex
+                        ] = {
+                            ...last,
+                            content:
+                                "Sorry, I couldn't retrieve the financial analysis right now.",
+                            tool: null,
+                        };
+                    }
+
+                    return updated;
+                }
+            );
+
+            setConversationError(
+                err?.message ||
+                    "Unable to complete the CFO analysis."
+            );
         } finally {
             setChatLoading(false);
         }
@@ -1713,6 +1958,25 @@ Do not invent causes, numbers, or facts.
                         setQuestion={setQuestion}
                         handleKeyDown={handleKeyDown}
                         sendMessage={sendMessage}
+                        conversations={conversations}
+                        activeConversationId={
+                            activeConversationId
+                        }
+                        conversationsLoading={
+                            conversationsLoading
+                        }
+                        conversationError={
+                            conversationError
+                        }
+                        onNewConversation={
+                            startNewConversation
+                        }
+                        onSelectConversation={
+                            selectConversation
+                        }
+                        onDeleteConversation={
+                            removeConversation
+                        }
                     />
                 </div>
             </main>

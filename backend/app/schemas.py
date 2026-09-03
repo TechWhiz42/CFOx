@@ -136,6 +136,44 @@ class CFOConversationMessage(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+
+
+class CFOConversationCreateRequest(BaseModel):
+    title: str | None = Field(
+        default=None,
+        max_length=255,
+    )
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        value = value.strip()
+
+        if not value:
+            return None
+
+        return value
+
+
+class CFOConversationResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
+
+
+class CFOConversationDetailResponse(CFOConversationResponse):
+    messages: list[CFOConversationMessage] = []
+
+
 class CFOConversationMessageResponse(BaseModel):
     conversation_id: int
     tool_used: str
