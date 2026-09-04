@@ -91,6 +91,40 @@ def test_markdown_code_fence_is_accepted(monkeypatch):
     assert result["summary"] == "Revenue is stable."
 
 
+def test_wrapped_json_response_is_accepted(monkeypatch):
+    content = """
+Here is the requested insight:
+{
+    "summary": "Payment failures increased.",
+    "severity": "warning",
+    "evidence": [
+        "Failure rate increased from 4% to 12%."
+    ],
+    "impact": "Higher payment failures may reduce collections.",
+    "recommendations": [
+        "Review payment gateway errors."
+    ]
+}
+"""
+
+    monkeypatch.setattr(
+        ai_service.ollama,
+        "chat",
+        lambda **kwargs: {
+            "message": {
+                "content": content
+            }
+        },
+    )
+
+    result = ai_service.generate_financial_insight(
+        FINANCIAL_DATA
+    )
+
+    assert result["severity"] == "warning"
+    assert result["summary"] == "Payment failures increased."
+
+
 def test_invalid_json_returns_fallback(monkeypatch):
     monkeypatch.setattr(
         ai_service.ollama,

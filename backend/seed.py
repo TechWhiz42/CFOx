@@ -1,3 +1,4 @@
+import os
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -6,12 +7,19 @@ from app.database import SessionLocal
 from app.models import Transaction, User
 
 PAYMENT_METHODS = ["upi", "card", "netbanking"]
-DEMO_EMAIL = "demo@cfox.local"
-DEMO_PASSWORD = "StrongPassword123"
+
+DEMO_EMAIL = os.getenv(
+    "CFOX_DEMO_EMAIL",
+    "demo@cfox.local",
+)
+
+DEMO_PASSWORD = os.getenv(
+    "CFOX_DEMO_PASSWORD",
+    "StrongPassword123",
+)
 
 
 def get_failure_probability(method, days_ago):
-    # Deliberate UPI anomaly during the most recent 15 days.
     if method == "upi":
         if days_ago <= 15:
             return 0.18
@@ -24,9 +32,11 @@ def get_failure_probability(method, days_ago):
 
 
 def get_or_create_demo_user(db):
+    email = DEMO_EMAIL.strip().lower()
+
     user = (
         db.query(User)
-        .filter(User.email == DEMO_EMAIL)
+        .filter(User.email == email)
         .first()
     )
 
@@ -34,7 +44,7 @@ def get_or_create_demo_user(db):
         return user
 
     user = User(
-        email=DEMO_EMAIL,
+        email=email,
         hashed_password=hash_password(DEMO_PASSWORD),
         is_active=1,
         created_at=datetime.now(timezone.utc),
@@ -61,11 +71,9 @@ def seed_transactions(count=2000):
 
         if existing_count:
             print(
-                f"Demo user already has {existing_count} transactions. "
-                "Skipping seed."
+                f"User {user.email} already has "
+                f"{existing_count} transactions. Skipping seed."
             )
-            print(f"Demo email: {DEMO_EMAIL}")
-            print(f"Demo password: {DEMO_PASSWORD}")
             return
 
         transactions = []
@@ -82,10 +90,9 @@ def seed_transactions(count=2000):
             )
 
             payment_method = random.choice(PAYMENT_METHODS)
-
             failure_probability = get_failure_probability(
                 payment_method,
-                days_ago
+                days_ago,
             )
 
             random_value = random.random()
@@ -98,7 +105,7 @@ def seed_transactions(count=2000):
                 status = "success"
 
             transaction = Transaction(
-                razorpay_payment_id=f"pay_demo_{i + 1:05d}",
+                razorpay_payment_id=f"pay_demo_{user.id}_{i + 1:05d}",
                 amount=round(random.uniform(100, 25000), 2),
                 currency="INR",
                 status=status,
@@ -113,9 +120,7 @@ def seed_transactions(count=2000):
         db.add_all(transactions)
         db.commit()
 
-        print(f"Inserted {count} transactions.")
-        print(f"Demo email: {DEMO_EMAIL}")
-        print(f"Demo password: {DEMO_PASSWORD}")
+        print(f"Inserted {count} transactions for {user.email}.")
 
     except Exception:
         db.rollback()

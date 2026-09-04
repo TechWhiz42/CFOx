@@ -63,7 +63,7 @@ class Settings:
     AI_REQUEST_TIMEOUT_SECONDS: int = int(
         os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "60")
     )
-    AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "120"))
+    AI_MAX_TOKENS: int = int(os.getenv("AI_MAX_TOKENS", "300"))
     AUTH_COOKIE_SECURE: bool = os.getenv(
         "AUTH_COOKIE_SECURE",
         "true" if ENVIRONMENT == "production" else "false",

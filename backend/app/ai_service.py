@@ -66,6 +66,13 @@ def _clean_model_output(content: str) -> str:
 
         content = "\n".join(lines).strip()
 
+    if not content.startswith("{"):
+        start = content.find("{")
+        end = content.rfind("}")
+
+        if start != -1 and end != -1 and end > start:
+            content = content[start:end + 1].strip()
+
     return content
 
 
@@ -144,8 +151,10 @@ Rules:
         response = ollama.chat(
             model=MODEL,
             keep_alive="30m",
+            format="json",
             options={
                 "num_predict": settings.AI_MAX_TOKENS,
+                "temperature": 0,
             },
             messages=[
                 {

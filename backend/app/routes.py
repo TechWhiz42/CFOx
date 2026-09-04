@@ -113,6 +113,49 @@ def display_payment_method(
     return payment_method or "all"
 
 
+def format_payment_method_analytics(
+        analytics: dict,
+) -> dict:
+    payment_methods = []
+
+    for payment_method in sorted(analytics):
+        method_data = analytics[payment_method]
+        changes = method_data.get("changes", {})
+
+        payment_methods.append(
+            {
+                "payment_method": payment_method,
+                "current_period": method_data.get("current_period", {}),
+                "previous_period": method_data.get("previous_period", {}),
+                "failure_rate_change": changes.get(
+                    "failure_rate_change_percentage_points",
+                    0.0,
+                ),
+                "failure_rate_multiplier": changes.get(
+                    "failure_rate_multiplier",
+                ),
+                "revenue_change": changes.get("revenue_change", 0.0),
+            }
+        )
+
+    worst_method = None
+
+    if payment_methods:
+        worst_method = max(
+            payment_methods,
+            key=lambda method: (
+                method.get("current_period", {}).get("failure_rate", 0.0),
+                method.get("failure_rate_change", 0.0),
+            ),
+        )["payment_method"]
+
+    return {
+        "payment_methods": payment_methods,
+        "worst_performing_method": worst_method,
+        "by_method": analytics,
+    }
+
+
 class CFOQuestion(BaseModel):
     question: str = Field(
         ...,
@@ -291,10 +334,12 @@ def payment_method_analytics(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    return analytics_compare_payment_methods(
+    analytics = analytics_compare_payment_methods(
         db,
         user_id=current_user.id,
     )
+
+    return format_payment_method_analytics(analytics)
 
 
 @router.get("/analytics/anomaly")

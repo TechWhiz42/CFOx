@@ -105,7 +105,7 @@ function PaymentMethods({
                                     key={method.payment_method}
                                     type="button"
                                     onClick={() =>
-                                        setSelectedPaymentMethod(
+                                        onSelectPaymentMethod(
                                             isSelected ? null : method
                                         )
                                     }
