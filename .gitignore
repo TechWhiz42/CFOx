@@ -50,3 +50,7 @@ coverage.xml
 # Temporary files
 *.tmp
 *.temp
+
+# Database backups
+release/backups/
+*.dump

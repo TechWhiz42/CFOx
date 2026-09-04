@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pwdlib import PasswordHash
@@ -13,8 +13,11 @@ from app.models import User
 password_hash = PasswordHash.recommended()
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/auth/login"
+    tokenUrl="/auth/login",
+    auto_error=False,
 )
+
+AUTH_COOKIE_NAME = "cfox_access_token"
 
 
 def _require_secret_key() -> str:
@@ -27,9 +30,6 @@ def _require_secret_key() -> str:
 
 
 def hash_password(password: str) -> str:
-    """
-    Hash a user password using Argon2.
-    """
     return password_hash.hash(password)
 
 
@@ -37,9 +37,6 @@ def verify_password(
         plain_password: str,
         hashed_password: str,
 ) -> bool:
-    """
-    Verify a plaintext password against its Argon2 hash.
-    """
     return password_hash.verify(
         plain_password,
         hashed_password,
@@ -47,10 +44,6 @@ def verify_password(
 
 
 def create_access_token(user_id: int) -> str:
-    """
-    Create a signed JWT access token.
-    """
-
     now = datetime.now(timezone.utc)
 
     expires_at = now + timedelta(
@@ -60,7 +53,10 @@ def create_access_token(user_id: int) -> str:
     payload = {
         "sub": str(user_id),
         "iat": now,
+        "nbf": now,
         "exp": expires_at,
+        "iss": settings.AUTH_ISSUER,
+        "aud": settings.AUTH_AUDIENCE,
     }
 
     return jwt.encode(
@@ -71,15 +67,11 @@ def create_access_token(user_id: int) -> str:
 
 
 def decode_access_token(token: str) -> int:
-    """
-    Decode and validate a JWT access token.
-    """
-
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired authentication token.",
         headers={
-            "WWW-Authenticate": "Bearer"
+            "WWW-Authenticate": "Bearer",
         },
     )
 
@@ -88,6 +80,8 @@ def decode_access_token(token: str) -> int:
             token,
             _require_secret_key(),
             algorithms=[settings.AUTH_ALGORITHM],
+            issuer=settings.AUTH_ISSUER,
+            audience=settings.AUTH_AUDIENCE,
         )
 
         subject = payload.get("sub")
@@ -101,15 +95,40 @@ def decode_access_token(token: str) -> int:
         raise credentials_exception from exc
 
 
+def _get_token_from_request(
+        request: Request,
+        bearer_token: str | None,
+) -> str:
+    if bearer_token:
+        return bearer_token
+
+    cookie_token = request.cookies.get(
+        AUTH_COOKIE_NAME
+    )
+
+    if cookie_token:
+        return cookie_token
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated.",
+        headers={
+            "WWW-Authenticate": "Bearer",
+        },
+    )
+
+
 def get_current_user(
-        token: str = Depends(oauth2_scheme),
+        request: Request,
+        token: str | None = Depends(oauth2_scheme),
         db: Session = Depends(get_db),
 ) -> User:
-    """
-    Resolve the authenticated user from the JWT.
-    """
+    access_token = _get_token_from_request(
+        request,
+        token,
+    )
 
-    user_id = decode_access_token(token)
+    user_id = decode_access_token(access_token)
 
     user = (
         db.query(User)
@@ -122,7 +141,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User no longer exists.",
             headers={
-                "WWW-Authenticate": "Bearer"
+                "WWW-Authenticate": "Bearer",
             },
         )
 

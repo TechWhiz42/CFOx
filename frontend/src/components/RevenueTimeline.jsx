@@ -1,268 +1,480 @@
-import {MiniMetric} from "./Metrics";
+import { MiniMetric } from "./Metrics";
+
+function isValidNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number);
+}
+
+function normalizeActualHistory(history) {
+    if (!Array.isArray(history)) {
+        return [];
+    }
+
+    return history
+        .filter(
+            (item) =>
+                item &&
+                typeof item === "object" &&
+                item.date &&
+                isValidNumber(item.revenue)
+        )
+        .map((item) => ({
+            date: item.date,
+            value: Number(item.revenue),
+        }));
+}
+
+function normalizeForecast(forecast) {
+    if (!Array.isArray(forecast)) {
+        return [];
+    }
+
+    return forecast
+        .filter(
+            (item) =>
+                item &&
+                typeof item === "object" &&
+                item.date &&
+                isValidNumber(item.predicted_revenue)
+        )
+        .map((item) => ({
+            date: item.date,
+            value: Number(item.predicted_revenue),
+        }));
+}
+
+function formatDate(date) {
+    if (!date) {
+        return "—";
+    }
+
+    const parsed = new Date(`${date}T00:00:00`);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return "—";
+    }
+
+    return parsed.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+    });
+}
+
+function formatCurrency(value) {
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return "₹0";
+    }
+
+    return `₹${number.toLocaleString("en-IN", {
+        maximumFractionDigits: 0,
+    })}`;
+}
 
 function RevenueTimeline({
-                             history,
-                             forecast,
-                         }) {
-    const actual = Array.isArray(history)
-        ? history
-        : [];
+    history,
+    forecast,
+}) {
+    const actual = normalizeActualHistory(history);
+    const projected = normalizeForecast(forecast);
 
-    const projected = Array.isArray(forecast)
-        ? forecast
-        : [];
+    /*
+     * ---------------------------------------------------------
+     * Empty state
+     * ---------------------------------------------------------
+     */
 
-    if (
-        actual.length === 0 &&
-        projected.length === 0
-    ) {
+    if (actual.length === 0 && projected.length === 0) {
         return (
             <div
                 style={{
-                    height: "280px",
+                    minHeight: "280px",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    opacity: 0.45,
-                    fontSize: "13px",
+                    gap: "8px",
+                    padding: "32px",
+                    color: "var(--cfox-muted)",
+                    textAlign: "center",
                 }}
             >
-                Revenue history unavailable.
+                <div
+                    style={{
+                        width: "42px",
+                        height: "42px",
+                        display: "grid",
+                        placeItems: "center",
+                        borderRadius: "12px",
+                        background: "var(--cfox-blue-soft)",
+                        color: "var(--cfox-blue)",
+                        fontSize: "18px",
+                        fontWeight: 800,
+                    }}
+                >
+                    ₹
+                </div>
+
+                <strong
+                    style={{
+                        color: "var(--cfox-text-strong)",
+                        fontSize: "14px",
+                    }}
+                >
+                    No revenue data yet
+                </strong>
+
+                <span
+                    style={{
+                        maxWidth: "360px",
+                        fontSize: "12px",
+                        lineHeight: 1.5,
+                    }}
+                >
+                    Revenue history and forecast will appear here once
+                    financial activity is available.
+                </span>
             </div>
         );
     }
 
+    /*
+     * ---------------------------------------------------------
+     * Combined chart points
+     * ---------------------------------------------------------
+     */
+
     const points = [
         ...actual.map((item) => ({
             date: item.date,
-            value: Number(item.revenue || 0),
+            value: item.value,
             type: "actual",
         })),
+
         ...projected.map((item) => ({
             date: item.date,
-            value: Number(
-                item.predicted_revenue || 0
-            ),
+            value: item.value,
             type: "forecast",
         })),
     ];
 
-    const values = points.map(
-        (point) => point.value
-    );
+    const values = points.map((point) => point.value);
 
-    const maxValue = Math.max(
-        ...values,
-        1
-    );
+    const maxDataValue = Math.max(...values, 0);
+    const minDataValue = Math.min(...values, 0);
 
-    const minValue = Math.min(
-        ...values,
-        0
-    );
+    /*
+     * Give the chart a little breathing room when all values
+     * are identical.
+     */
+    const dataRange = maxDataValue - minDataValue;
 
-    const range =
-        maxValue - minValue || 1;
+    const paddingValue =
+        dataRange > 0
+            ? dataRange * 0.08
+            : Math.max(Math.abs(maxDataValue) * 0.08, 100);
+
+    const maxValue = maxDataValue + paddingValue;
+    const minValue = Math.max(0, minDataValue - paddingValue);
+
+    const range = maxValue - minValue || 1;
+
+    /*
+     * ---------------------------------------------------------
+     * SVG dimensions
+     * ---------------------------------------------------------
+     */
 
     const width = 1000;
-    const height = 300;
-    const left = 56;
-    const right = 18;
-    const top = 20;
-    const bottom = 42;
+    const height = 320;
 
-    const chartWidth =
-        width - left - right;
+    const left = 70;
+    const right = 24;
+    const top = 26;
+    const bottom = 48;
 
-    const chartHeight =
-        height - top - bottom;
+    const chartWidth = width - left - right;
+    const chartHeight = height - top - bottom;
 
     const x = (index) =>
         left +
-        (index /
-            Math.max(
-                points.length - 1,
-                1
-            )) *
-        chartWidth;
+        (index / Math.max(points.length - 1, 1)) *
+            chartWidth;
 
     const y = (value) =>
         top +
-        (1 -
-            (value - minValue) /
-            range) *
-        chartHeight;
+        (1 - (value - minValue) / range) *
+            chartHeight;
 
-    const actualPoints = actual.map(
-        (item, index) => {
-            const pointIndex = index;
+    /*
+     * ---------------------------------------------------------
+     * Actual points
+     * ---------------------------------------------------------
+     */
 
-            return {
-                x: x(pointIndex),
-                y: y(
-                    Number(
-                        item.revenue || 0
-                    )
-                ),
-            };
-        }
+    const actualPoints = actual.map((item, index) => ({
+        x: x(index),
+        y: y(item.value),
+    }));
+
+    /*
+     * ---------------------------------------------------------
+     * Forecast points
+     *
+     * The forecast begins immediately after the final actual
+     * point. This lets the chart visually connect actual
+     * performance to projected performance.
+     * ---------------------------------------------------------
+     */
+
+    const forecastStartIndex = Math.max(
+        actual.length - 1,
+        0
     );
-
-    const forecastStartIndex =
-        actual.length - 1;
 
     const forecastPoints = projected.map(
         (item, index) => {
             const pointIndex =
-                forecastStartIndex +
-                index + 1;
+                actual.length > 0
+                    ? forecastStartIndex + index + 1
+                    : index;
 
             return {
                 x: x(pointIndex),
-                y: y(
-                    Number(
-                        item.predicted_revenue ||
-                        0
-                    )
-                ),
+                y: y(item.value),
             };
         }
     );
 
-    const linePath = (
-        valuesList
-    ) =>
-        valuesList
+    /*
+     * ---------------------------------------------------------
+     * SVG paths
+     * ---------------------------------------------------------
+     */
+
+    const linePath = (valuesList) => {
+        const validPoints = valuesList.filter(
+            (point) =>
+                point &&
+                Number.isFinite(point.x) &&
+                Number.isFinite(point.y)
+        );
+
+        return validPoints
             .map(
                 (point, index) =>
                     `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
             )
             .join(" ");
-
-    const actualPath =
-        linePath(actualPoints);
-
-    const forecastPath =
-        forecastPoints.length > 0
-            ? `M ${actualPoints[actualPoints.length - 1].x} ${actualPoints[actualPoints.length - 1].y} ${linePath(
-                forecastPoints
-            ).replace(/^M /, "L ")}`
-            : "";
-
-    const formatDate = (date) => {
-        const parsed = new Date(
-            `${date}T00:00:00`
-        );
-
-        return parsed.toLocaleDateString(
-            "en-IN",
-            {
-                day: "2-digit",
-                month: "short",
-            }
-        );
     };
 
-    const formatCurrency = (value) =>
-        `₹${Number(value).toLocaleString(
-            "en-IN",
-            {
-                maximumFractionDigits: 0,
-            }
-        )}`;
+    const actualPath = linePath(actualPoints);
+
+    const forecastAnchor =
+        actualPoints.length > 0
+            ? actualPoints[actualPoints.length - 1]
+            : null;
+
+    let forecastPath = "";
+
+    if (forecastPoints.length > 0) {
+        if (forecastAnchor) {
+            const forecastLine = linePath(
+                forecastPoints
+            );
+
+            forecastPath = forecastLine
+                ? `M ${forecastAnchor.x} ${forecastAnchor.y} ${forecastLine.replace(
+                      /^M /,
+                      "L "
+                  )}`
+                : "";
+        } else {
+            forecastPath = linePath(forecastPoints);
+        }
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Axis labels
+     * ---------------------------------------------------------
+     */
 
     const labelIndexes = [
         0,
-        Math.floor(
-            (points.length - 1) *
-            0.25
-        ),
-        Math.floor(
-            (points.length - 1) *
-            0.5
-        ),
-        Math.floor(
-            (points.length - 1) *
-            0.75
-        ),
+        Math.floor((points.length - 1) * 0.25),
+        Math.floor((points.length - 1) * 0.5),
+        Math.floor((points.length - 1) * 0.75),
         points.length - 1,
     ].filter(
         (value, index, array) =>
-            array.indexOf(value) ===
-            index
+            value >= 0 &&
+            value < points.length &&
+            array.indexOf(value) === index
     );
 
     const gridValues = [
         maxValue,
-        maxValue -
-        range * 0.25,
-        maxValue -
-        range * 0.5,
-        maxValue -
-        range * 0.75,
+        maxValue - range * 0.25,
+        maxValue - range * 0.5,
+        maxValue - range * 0.75,
         minValue,
     ];
 
+    /*
+     * ---------------------------------------------------------
+     * Summary values
+     * ---------------------------------------------------------
+     */
+
+    const actualRevenue = actual.reduce(
+        (total, item) => total + item.value,
+        0
+    );
+
+    const forecastRevenue = projected.reduce(
+        (total, item) => total + item.value,
+        0
+    );
+
+    const latestActual =
+        actual.length > 0
+            ? actual[actual.length - 1].value
+            : null;
+
+    /*
+     * ---------------------------------------------------------
+     * Render
+     * ---------------------------------------------------------
+     */
+
     return (
         <div>
+            {/* Header / legend */}
+            <div
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                    marginBottom: "14px",
+                    flexWrap: "wrap",
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "18px",
+                    }}
+                >
+                    {actual.length > 0 && (
+                        <div
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "7px",
+                                color: "var(--cfox-muted)",
+                                fontSize: "10px",
+                                fontWeight: 700,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: "18px",
+                                    height: "3px",
+                                    borderRadius: "999px",
+                                    background:
+                                        "var(--cfox-blue)",
+                                }}
+                            />
+
+                            Actual
+                        </div>
+                    )}
+
+                    {projected.length > 0 && (
+                        <div
+                            style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "7px",
+                                color: "var(--cfox-muted)",
+                                fontSize: "10px",
+                                fontWeight: 700,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: "18px",
+                                    height: "3px",
+                                    borderRadius: "999px",
+                                    background:
+                                        "var(--cfox-green)",
+                                }}
+                            />
+
+                            Forecast
+                        </div>
+                    )}
+                </div>
+
+                {actual.length > 0 && (
+                    <span
+                        style={{
+                            color: "var(--cfox-muted-2)",
+                            fontSize: "10px",
+                            fontWeight: 650,
+                        }}
+                    >
+                        Latest:{" "}
+                        {formatCurrency(latestActual)}
+                    </span>
+                )}
+            </div>
+
             <div
                 style={{
                     width: "100%",
                     overflowX: "auto",
+                    borderRadius: "10px",
                 }}
             >
                 <svg
                     viewBox={`0 0 ${width} ${height}`}
                     width="100%"
-                    height="300"
+                    height="320"
                     role="img"
                     aria-label="Revenue history and forecast"
                     style={{
                         minWidth: "700px",
                         display: "block",
+                        overflow: "visible",
                     }}
                 >
+                    {/* Grid */}
                     {gridValues.map(
-                        (
-                            value,
-                            index
-                        ) => {
-                            const yPosition =
-                                y(value);
+                        (value, index) => {
+                            const yPosition = y(value);
 
                             return (
-                                <g
-                                    key={
-                                        index
-                                    }
-                                >
+                                <g key={index}>
                                     <line
                                         x1={left}
-                                        x2={
-                                            width -
-                                            right
-                                        }
-                                        y1={
-                                            yPosition
-                                        }
-                                        y2={
-                                            yPosition
-                                        }
-                                        stroke="rgba(255,255,255,0.07)"
+                                        x2={width - right}
+                                        y1={yPosition}
+                                        y2={yPosition}
+                                        stroke="var(--cfox-border)"
+                                        strokeOpacity="0.65"
                                         strokeWidth="1"
                                     />
 
                                     <text
-                                        x={
-                                            left -
-                                            10
-                                        }
-                                        y={
-                                            yPosition +
-                                            4
-                                        }
+                                        x={left - 12}
+                                        y={yPosition + 4}
                                         textAnchor="end"
-                                        fill="rgba(255,255,255,0.38)"
+                                        fill="var(--cfox-muted-2)"
                                         fontSize="10"
                                     >
                                         {formatCurrency(
@@ -274,221 +486,151 @@ function RevenueTimeline({
                         }
                     )}
 
-                    {actual.length > 0 && (
-                        <>
-                            <path
-                                d={actualPath}
-                                fill="none"
-                                stroke="#a78bfa"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-
-                            {actualPoints.map(
-                                (
-                                    point,
-                                    index
-                                ) => (
-                                    <circle
-                                        key={
-                                            index
-                                        }
-                                        cx={
-                                            point.x
-                                        }
-                                        cy={
-                                            point.y
-                                        }
-                                        r="3.5"
-                                        fill="#a78bfa"
-                                    >
-                                        <title>
-                                            {formatDate(
-                                                actual[
-                                                    index
-                                                    ]
-                                                    .date
-                                            )}{" "}
-                                            ·{" "}
-                                            {formatCurrency(
-                                                actual[
-                                                    index
-                                                    ]
-                                                    .revenue
-                                            )}
-                                        </title>
-                                    </circle>
-                                )
-                            )}
-                        </>
+                    {/* Actual line */}
+                    {actualPath && (
+                        <path
+                            d={actualPath}
+                            fill="none"
+                            stroke="var(--cfox-blue)"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
                     )}
 
-                    {forecastPoints.length > 0 && (
-                        <>
-                            <line
-                                x1={
-                                    actualPoints[
-                                    actualPoints.length -
-                                    1
-                                        ].x
-                                }
-                                x2={
-                                    actualPoints[
-                                    actualPoints.length -
-                                    1
-                                        ].x
-                                }
-                                y1={top}
-                                y2={
-                                    height -
-                                    bottom
-                                }
-                                stroke="rgba(255,255,255,0.14)"
-                                strokeDasharray="4 5"
-                            />
-
-                            <path
-                                d={forecastPath}
-                                fill="none"
-                                stroke="#34d399"
-                                strokeWidth="3"
-                                strokeDasharray="7 6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-
-                            {forecastPoints.map(
-                                (
-                                    point,
-                                    index
-                                ) => (
-                                    <circle
-                                        key={
-                                            index
-                                        }
-                                        cx={
-                                            point.x
-                                        }
-                                        cy={
-                                            point.y
-                                        }
-                                        r="3.5"
-                                        fill="#34d399"
-                                    >
-                                        <title>
-                                            {formatDate(
-                                                projected[
-                                                    index
-                                                    ]
-                                                    .date
-                                            )}{" "}
-                                            ·{" "}
-                                            {formatCurrency(
-                                                projected[
-                                                    index
-                                                    ]
-                                                    .predicted_revenue
-                                            )}
-                                        </title>
-                                    </circle>
-                                )
-                            )}
-                        </>
-                    )}
-
-                    {labelIndexes.map(
-                        (
-                            index
-                        ) => (
-                            <text
-                                key={
-                                    index
-                                }
-                                x={x(index)}
-                                y={
-                                    height -
-                                    12
-                                }
-                                textAnchor={
-                                    index ===
-                                    0
-                                        ? "start"
-                                        : index ===
-                                        points.length -
-                                        1
-                                            ? "end"
-                                            : "middle"
-                                }
-                                fill="rgba(255,255,255,0.42)"
-                                fontSize="10"
+                    {/* Actual points */}
+                    {actualPoints.map(
+                        (point, index) => (
+                            <circle
+                                key={`actual-${index}`}
+                                cx={point.x}
+                                cy={point.y}
+                                r="3.5"
+                                fill="var(--cfox-blue)"
                             >
-                                {formatDate(
-                                    points[
-                                        index
-                                        ].date
-                                )}
-                            </text>
+                                <title>
+                                    {formatDate(
+                                        actual[index].date
+                                    )}{" "}
+                                    ·{" "}
+                                    {formatCurrency(
+                                        actual[index].value
+                                    )}
+                                </title>
+                            </circle>
                         )
                     )}
+
+                    {/* Forecast boundary */}
+                    {forecastPoints.length > 0 &&
+                        forecastAnchor && (
+                            <line
+                                x1={forecastAnchor.x}
+                                x2={forecastAnchor.x}
+                                y1={top}
+                                y2={height - bottom}
+                                stroke="var(--cfox-border-strong)"
+                                strokeDasharray="4 5"
+                                strokeWidth="1"
+                            />
+                        )}
+
+                    {/* Forecast line */}
+                    {forecastPath && (
+                        <path
+                            d={forecastPath}
+                            fill="none"
+                            stroke="var(--cfox-green)"
+                            strokeWidth="3"
+                            strokeDasharray="7 6"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    )}
+
+                    {/* Forecast points */}
+                    {forecastPoints.map(
+                        (point, index) => (
+                            <circle
+                                key={`forecast-${index}`}
+                                cx={point.x}
+                                cy={point.y}
+                                r="3.5"
+                                fill="var(--cfox-green)"
+                            >
+                                <title>
+                                    {formatDate(
+                                        projected[index].date
+                                    )}{" "}
+                                    ·{" "}
+                                    {formatCurrency(
+                                        projected[index].value
+                                    )}
+                                </title>
+                            </circle>
+                        )
+                    )}
+
+                    {/* Date labels */}
+                    {labelIndexes.map((index) => (
+                        <text
+                            key={`label-${index}`}
+                            x={x(index)}
+                            y={height - 14}
+                            textAnchor={
+                                index === 0
+                                    ? "start"
+                                    : index ===
+                                        points.length - 1
+                                      ? "end"
+                                      : "middle"
+                            }
+                            fill="var(--cfox-muted-2)"
+                            fontSize="10"
+                        >
+                            {formatDate(
+                                points[index].date
+                            )}
+                        </text>
+                    ))}
                 </svg>
             </div>
 
+            {/* Summary metrics */}
             <div
                 style={{
                     display: "grid",
                     gridTemplateColumns:
                         "repeat(auto-fit, minmax(170px, 1fr))",
                     gap: "10px",
-                    marginTop: "4px",
+                    marginTop: "8px",
                 }}
             >
-                <MiniMetric
-                    label="30-day actual"
-                    value={formatCurrency(
-                        actual.reduce(
-                            (
-                                total,
-                                item
-                            ) =>
-                                total +
-                                Number(
-                                    item.revenue ||
-                                    0
-                                ),
-                            0
-                        )
-                    )}
-                />
+                {actual.length > 0 && (
+                    <MiniMetric
+                        label="30-day actual"
+                        value={formatCurrency(
+                            actualRevenue
+                        )}
+                    />
+                )}
 
-                <MiniMetric
-                    label="7-day forecast"
-                    value={formatCurrency(
-                        projected.reduce(
-                            (
-                                total,
-                                item
-                            ) =>
-                                total +
-                                Number(
-                                    item.predicted_revenue ||
-                                    0
-                                ),
-                            0
-                        )
-                    )}
-                />
+                {projected.length > 0 && (
+                    <MiniMetric
+                        label="7-day forecast"
+                        value={formatCurrency(
+                            forecastRevenue
+                        )}
+                    />
+                )}
 
                 <MiniMetric
                     label="Latest actual"
                     value={
-                        actual.length > 0
+                        latestActual !== null
                             ? formatCurrency(
-                                actual[
-                                actual.length -
-                                1
-                                    ].revenue
-                            )
+                                  latestActual
+                              )
                             : "N/A"
                     }
                 />

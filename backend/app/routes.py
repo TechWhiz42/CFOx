@@ -11,20 +11,21 @@ from app.ai_investigation import investigate_financial_question
 from app.ai_service import generate_financial_insight
 from app.alerts import generate_financial_alerts
 from app.analytics import (
-    calculate_anomaly_score,
-    compare_periods,
-    compare_payment_methods as analytics_compare_payment_methods,
     calculate_advanced_kpis,
-    get_daily_performance,
+    calculate_anomaly_score,
+    compare_payment_methods as analytics_compare_payment_methods,
+    compare_periods,
     get_customer_concentration,
+    get_daily_performance,
 )
+from app.audit import audit_event
 from app.auth import get_current_user
 from app.cashflow import calculate_cashflow_risk
 from app.cfo_conversation_service import (
-    get_owned_conversation,
     get_conversation_history,
-    prepare_cfo_exchange,
+    get_owned_conversation,
     persist_cfo_exchange,
+    prepare_cfo_exchange,
 )
 from app.chat_service import (
     route_question,
@@ -35,32 +36,35 @@ from app.database import get_db
 from app.financial_actions import generate_financial_actions
 from app.financial_health import calculate_financial_health
 from app.forecasting import (
-    get_daily_revenue,
     forecast_revenue,
+    get_daily_revenue,
 )
 from app.models import ChatMessage, Conversation
 from app.models import Transaction, User
+from app.production_hardening import (
+    ai_limiter,
+    enforce_rate_limit,
+    request_rate_limit_key,
+    user_rate_limit_key,
+    webhook_limiter,
+)
 from app.reliability import CFOAIServiceError, public_ai_error_detail
 from app.schemas import (
+    CFOConversationResponse,
     TransactionCreate,
     TransactionResponse,
-    CFOConversationCreateRequest,
-    CFOConversationMessageRequest,
-    CFOConversationMessageResponse,
-    CFOConversationResponse,
-    CFOConversationDetailResponse,
 )
 from app.services.analytics_service import (
-    get_dashboard_analysis,
-    get_alert_analysis,
     get_ai_insight_data,
+    get_alert_analysis,
     get_anomaly_analysis,
+    get_dashboard_analysis,
 )
 from app.services.revenue_service import get_revenue_history
 from app.tools import (
-    get_revenue_analysis,
     get_cashflow_analysis,
     get_failed_transactions,
+    get_revenue_analysis,
 )
 from app.webhook_service import process_razorpay_event, verify_razorpay_signature
 
@@ -69,10 +73,6 @@ router = APIRouter(
     tags=["Transactions"],
     dependencies=[Depends(get_current_user)],
 )
-
-# =========================================================
-# REQUEST / VALIDATION HELPERS
-# =========================================================
 
 SUPPORTED_PAYMENT_METHODS = {
     "upi",
@@ -84,20 +84,6 @@ SUPPORTED_PAYMENT_METHODS = {
 def normalize_payment_method(
         payment_method: str | None,
 ) -> str | None:
-    """
-    Normalize the API payment-method selector.
-
-    None and "all" both mean no payment-method filter.
-
-    Supported concrete methods:
-        - upi
-        - card
-        - netbanking
-
-    Raises:
-        HTTPException(400) for unsupported methods.
-    """
-
     if payment_method is None:
         return None
 
@@ -121,11 +107,6 @@ def normalize_payment_method(
 def display_payment_method(
         payment_method: str | None,
 ) -> str:
-    """
-    Convert the internal representation back into
-    the public API representation.
-    """
-
     return payment_method or "all"
 
 
@@ -137,10 +118,6 @@ class CFOQuestion(BaseModel):
     )
 
 
-# =========================================================
-# TRANSACTION INGESTION
-# =========================================================
-
 @router.post(
     "",
     response_model=TransactionResponse,
@@ -151,21 +128,12 @@ def create_transaction(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    """Create a transaction owned by the authenticated user.
-
-    The request cannot supply user_id; ownership is derived exclusively
-    from the verified JWT. Razorpay payment IDs are globally unique and
-    therefore protect against accidental duplicate ingestion.
-    """
+    transaction_data = transaction.model_dump(
+        exclude_none=True
+    )
 
     db_transaction = Transaction(
-        razorpay_payment_id=transaction.razorpay_payment_id,
-        amount=transaction.amount,
-        currency=transaction.currency,
-        status=transaction.status,
-        payment_method=transaction.payment_method,
-        customer_id=transaction.customer_id,
-        created_at=transaction.created_at,
+        **transaction_data,
         user_id=current_user.id,
     )
 
@@ -175,19 +143,30 @@ def create_transaction(
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        # The unique payment ID is the intended duplicate guard. Avoid
-        # exposing raw database errors to API clients.
+
         if "razorpay_payment_id" in str(exc).lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="A transaction with this razorpay_payment_id already exists.",
             ) from exc
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Transaction could not be created because it conflicts with existing data.",
         ) from exc
 
     db.refresh(db_transaction)
+
+    audit_event(
+        "transaction.created",
+        user_id=current_user.id,
+        metadata={
+            "transaction_id": db_transaction.id,
+            "status": db_transaction.status,
+            "payment_method": db_transaction.payment_method,
+        },
+    )
+
     return db_transaction
 
 
@@ -201,12 +180,17 @@ def list_transactions(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    """List only the authenticated user's transactions."""
-
     if limit < 1 or limit > 100:
-        raise HTTPException(status_code=400, detail="limit must be between 1 and 100")
+        raise HTTPException(
+            status_code=400,
+            detail="limit must be between 1 and 100",
+        )
+
     if offset < 0:
-        raise HTTPException(status_code=400, detail="offset must be non-negative")
+        raise HTTPException(
+            status_code=400,
+            detail="offset must be non-negative",
+        )
 
     return (
         db.query(Transaction)
@@ -217,10 +201,6 @@ def list_transactions(
         .all()
     )
 
-
-# =========================================================
-# DAILY REVENUE
-# =========================================================
 
 @router.get("/analytics/daily-revenue")
 def daily_revenue(
@@ -243,10 +223,6 @@ def daily_revenue(
         ),
     }
 
-
-# =========================================================
-# REVENUE FORECAST
-# =========================================================
 
 @router.get("/analytics/revenue-forecast")
 def revenue_forecast(
@@ -275,19 +251,13 @@ def revenue_forecast(
     )
 
 
-# =========================================================
-# CASH-FLOW RISK
-# =========================================================
-
 @router.get("/analytics/cashflow-risk")
 def cashflow_risk(
         payment_method: str | None = None,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     return calculate_cashflow_risk(
         db,
@@ -296,19 +266,13 @@ def cashflow_risk(
     )
 
 
-# =========================================================
-# AI FINANCIAL INSIGHT
-# =========================================================
-
 @router.get("/analytics/ai-insight")
 def ai_insight(
         payment_method: str = "upi",
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     financial_data = get_ai_insight_data(
         db,
@@ -316,14 +280,8 @@ def ai_insight(
         user_id=current_user.id,
     )
 
-    return generate_financial_insight(
-        financial_data,
-    )
+    return generate_financial_insight(financial_data)
 
-
-# =========================================================
-# PAYMENT METHOD ANALYTICS
-# =========================================================
 
 @router.get("/analytics/payment-methods")
 def payment_method_analytics(
@@ -336,19 +294,13 @@ def payment_method_analytics(
     )
 
 
-# =========================================================
-# DETERMINISTIC ANOMALY ANALYSIS
-# =========================================================
-
 @router.get("/analytics/anomaly")
 def anomaly_analysis(
         payment_method: str = "upi",
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     return get_anomaly_analysis(
         db,
@@ -357,19 +309,13 @@ def anomaly_analysis(
     )
 
 
-# =========================================================
-# UNIFIED DASHBOARD
-# =========================================================
-
 @router.get("/dashboard")
 def dashboard(
         payment_method: str = "upi",
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     return get_dashboard_analysis(
         db,
@@ -378,16 +324,17 @@ def dashboard(
     )
 
 
-# =========================================================
-# AI CFO CHAT
-# =========================================================
-
 @router.post("/cfo/chat")
 def cfo_chat(
         request: CFOQuestion,
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    enforce_rate_limit(
+        ai_limiter,
+        user_rate_limit_key(current_user.id, "ai:cfo_chat"),
+    )
+
     question = request.question.strip()
 
     if not question:
@@ -396,26 +343,13 @@ def cfo_chat(
             detail="Question cannot be empty.",
         )
 
-    # -----------------------------------------------------
-    # 1. FAST LOCAL ROUTING
-    # -----------------------------------------------------
-
-    tool_name = route_question(
-        question,
-    )
-
-    # -----------------------------------------------------
-    # 2. RUN ONLY THE REQUIRED ANALYTICS
-    # -----------------------------------------------------
-
+    tool_name = route_question(question)
     tool_result = None
 
     if tool_name == "compare_payment_methods":
-        tool_result = (
-            analytics_compare_payment_methods(
-                db,
-                user_id=current_user.id,
-            )
+        tool_result = analytics_compare_payment_methods(
+            db,
+            user_id=current_user.id,
         )
 
     elif tool_name == "get_revenue_analysis":
@@ -438,18 +372,13 @@ def cfo_chat(
         )
 
     elif tool_name == "get_anomaly_analysis":
-        # Preserve the existing chat behavior:
-        # anomaly questions currently analyze UPI.
-
         comparison = compare_periods(
             db,
             "upi",
             user_id=current_user.id,
         )
 
-        anomaly = calculate_anomaly_score(
-            comparison,
-        )
+        anomaly = calculate_anomaly_score(comparison)
 
         tool_result = {
             "payment_method": "upi",
@@ -457,35 +386,32 @@ def cfo_chat(
             "anomaly": anomaly,
         }
 
-    # -----------------------------------------------------
-    # 3. STREAM RESPONSE
-    # -----------------------------------------------------
-
     def generate():
         try:
-            yield json.dumps(
-                {
-                    "type": "metadata",
-                    "tool_used": tool_name,
-                }
-            ) + "\n"
+            yield json.dumps({
+                "type": "metadata",
+                "tool_used": tool_name,
+            }) + "\n"
 
-            for token in stream_cfo_answer(
-                    question,
-                    tool_result,
-            ):
-                yield json.dumps(
-                    {
-                        "type": "token",
-                        "content": token,
-                    }
-                ) + "\n"
+            for token in stream_cfo_answer(question, tool_result):
+                yield json.dumps({
+                    "type": "token",
+                    "content": token,
+                }) + "\n"
 
             yield json.dumps({"type": "done"}) + "\n"
+
         except CFOAIServiceError:
-            yield json.dumps({"type": "error", "detail": public_ai_error_detail()}) + "\n"
+            yield json.dumps({
+                "type": "error",
+                "detail": public_ai_error_detail(),
+            }) + "\n"
+
         except Exception:
-            yield json.dumps({"type": "error", "detail": "An unexpected error occurred."}) + "\n"
+            yield json.dumps({
+                "type": "error",
+                "detail": "An unexpected error occurred.",
+            }) + "\n"
 
     return StreamingResponse(
         generate(),
@@ -493,19 +419,13 @@ def cfo_chat(
     )
 
 
-# =========================================================
-# FINANCIAL ALERTS
-# =========================================================
-
 @router.get("/alerts")
 def financial_alerts(
         payment_method: str = "upi",
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     alert_analysis = get_alert_analysis(
         db,
@@ -520,16 +440,10 @@ def financial_alerts(
     )
 
     return {
-        "payment_method": display_payment_method(
-            normalized_method
-        ),
+        "payment_method": display_payment_method(normalized_method),
         **alert_data,
     }
 
-
-# =========================================================
-# REVENUE HISTORY
-# =========================================================
 
 @router.get("/analytics/revenue-history")
 def revenue_history(
@@ -544,9 +458,7 @@ def revenue_history(
             detail="days must be between 1 and 90",
         )
 
-    normalized_method = normalize_payment_method(
-        payment_method
-    )
+    normalized_method = normalize_payment_method(payment_method)
 
     return get_revenue_history(
         db,
@@ -556,10 +468,6 @@ def revenue_history(
     )
 
 
-# =========================================================
-# PHASE 9 — ADVANCED FINANCIAL ANALYTICS
-# =========================================================
-
 @router.get("/analytics/advanced-kpis")
 def advanced_kpis(
         days: int = 30,
@@ -568,12 +476,20 @@ def advanced_kpis(
         current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+        raise HTTPException(
+            status_code=400,
+            detail="days must be between 1 and 365",
+        )
 
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days)
+
     return calculate_advanced_kpis(
-        db, start_date, end_date, normalize_payment_method(payment_method), current_user.id
+        db,
+        start_date,
+        end_date,
+        normalize_payment_method(payment_method),
+        current_user.id,
     )
 
 
@@ -585,12 +501,22 @@ def daily_performance(
         current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+        raise HTTPException(
+            status_code=400,
+            detail="days must be between 1 and 365",
+        )
+
+    normalized_method = normalize_payment_method(payment_method)
 
     return {
         "days": days,
-        "payment_method": display_payment_method(normalize_payment_method(payment_method)),
-        "data": get_daily_performance(db, days, payment_method, current_user.id),
+        "payment_method": display_payment_method(normalized_method),
+        "data": get_daily_performance(
+            db,
+            days,
+            normalized_method,
+            current_user.id,
+        ),
     }
 
 
@@ -603,18 +529,27 @@ def customer_concentration(
         current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
-        raise HTTPException(status_code=400, detail="days must be between 1 and 365")
+        raise HTTPException(
+            status_code=400,
+            detail="days must be between 1 and 365",
+        )
+
     if top_n < 1 or top_n > 100:
-        raise HTTPException(status_code=400, detail="top_n must be between 1 and 100")
+        raise HTTPException(
+            status_code=400,
+            detail="top_n must be between 1 and 100",
+        )
+
+    normalized_method = normalize_payment_method(payment_method)
 
     return get_customer_concentration(
-        db, days, top_n, payment_method, current_user.id
+        db,
+        days,
+        top_n,
+        normalized_method,
+        current_user.id,
     )
 
-
-# =========================================================
-# PHASE 10 — AI CFO INVESTIGATION
-# =========================================================
 
 class CFOInvestigationRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
@@ -627,9 +562,18 @@ def investigate_cfo_question(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    enforce_rate_limit(
+        ai_limiter,
+        user_rate_limit_key(current_user.id, "ai:investigate"),
+    )
+
     question = request.question.strip()
+
     if not question:
-        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+        raise HTTPException(
+            status_code=400,
+            detail="Question cannot be empty.",
+        )
 
     return investigate_financial_question(
         db,
@@ -638,10 +582,6 @@ def investigate_cfo_question(
         days=request.days,
     )
 
-
-# =========================================================
-# PHASE 12 — FINANCIAL HEALTH
-# =========================================================
 
 @router.get("/analytics/financial-health")
 def financial_health(
@@ -656,12 +596,14 @@ def financial_health(
         normalized_method,
         current_user.id,
     )
+
     forecast = forecast_revenue(
         db,
         history_days=30,
         forecast_days=7,
         user_id=current_user.id,
     )
+
     cashflow = calculate_cashflow_risk(
         db,
         payment_method=normalized_method,
@@ -669,6 +611,7 @@ def financial_health(
         forecast=forecast,
         user_id=current_user.id,
     )
+
     anomaly = calculate_anomaly_score(comparison)
 
     health = calculate_financial_health(
@@ -690,10 +633,6 @@ def financial_health(
     }
 
 
-# =========================================================
-# PHASE 12 — FINANCIAL ACTIONS
-# =========================================================
-
 @router.get("/analytics/financial-actions")
 def financial_actions(
         payment_method: str | None = None,
@@ -707,12 +646,14 @@ def financial_actions(
         normalized_method,
         current_user.id,
     )
+
     forecast = forecast_revenue(
         db,
         history_days=30,
         forecast_days=7,
         user_id=current_user.id,
     )
+
     cashflow = calculate_cashflow_risk(
         db,
         payment_method=normalized_method,
@@ -720,6 +661,7 @@ def financial_actions(
         forecast=forecast,
         user_id=current_user.id,
     )
+
     anomaly = calculate_anomaly_score(comparison)
 
     health = calculate_financial_health(
@@ -752,10 +694,6 @@ def financial_actions(
     }
 
 
-# =========================================================
-# PHASE 11 — PERSISTENT CFO CONVERSATIONS
-# =========================================================
-
 class ConversationCreateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=255)
 
@@ -774,8 +712,12 @@ def _conversation_payload(conversation: Conversation) -> dict:
     }
 
 
-def _conversation_with_messages(conversation: Conversation, messages: list[ChatMessage]) -> dict:
+def _conversation_with_messages(
+        conversation: Conversation,
+        messages: list[ChatMessage],
+) -> dict:
     payload = _conversation_payload(conversation)
+
     payload["messages"] = [
         {
             "id": message.id,
@@ -785,6 +727,7 @@ def _conversation_with_messages(conversation: Conversation, messages: list[ChatM
         }
         for message in messages
     ]
+
     return payload
 
 
@@ -799,13 +742,16 @@ def create_cfo_conversation(
         current_user: User = Depends(get_current_user),
 ):
     title = request.title.strip() if request.title else None
+
     conversation = Conversation(
         user_id=current_user.id,
         title=title or "New conversation",
     )
+
     db.add(conversation)
     db.commit()
     db.refresh(conversation)
+
     return _conversation_payload(conversation)
 
 
@@ -820,7 +766,11 @@ def list_cfo_conversations(
         .order_by(Conversation.updated_at.desc(), Conversation.id.desc())
         .all()
     )
-    return [_conversation_payload(item) for item in conversations]
+
+    return [
+        _conversation_payload(conversation)
+        for conversation in conversations
+    ]
 
 
 @router.get("/cfo/conversations/{conversation_id}")
@@ -829,11 +779,24 @@ def get_cfo_conversation(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    conversation = get_owned_conversation(db, conversation_id, current_user.id)
-    if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found.")
+    conversation = get_owned_conversation(
+        db,
+        conversation_id,
+        current_user.id,
+    )
 
-    messages = get_conversation_history(db, conversation_id, limit=100)
+    if conversation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found.",
+        )
+
+    messages = get_conversation_history(
+        db,
+        conversation_id,
+        limit=100,
+    )
+
     return _conversation_with_messages(conversation, messages)
 
 
@@ -843,13 +806,33 @@ def delete_cfo_conversation(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
-    conversation = get_owned_conversation(db, conversation_id, current_user.id)
+    conversation = get_owned_conversation(
+        db,
+        conversation_id,
+        current_user.id,
+    )
+
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found.",
+        )
 
     db.delete(conversation)
     db.commit()
-    return {"status": "deleted", "id": conversation_id}
+
+    audit_event(
+        "conversation.deleted",
+        user_id=current_user.id,
+        metadata={
+            "conversation_id": conversation_id,
+        },
+    )
+
+    return {
+        "status": "deleted",
+        "id": conversation_id,
+    }
 
 
 @router.post("/cfo/conversations/{conversation_id}/messages")
@@ -859,9 +842,18 @@ def create_cfo_message(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    enforce_rate_limit(
+        ai_limiter,
+        user_rate_limit_key(current_user.id, "ai:conversation"),
+    )
+
     question = request.content.strip()
+
     if not question:
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot be empty.",
+        )
 
     try:
         conversation, contextual_question, tool_name, tool_result = prepare_cfo_exchange(
@@ -872,10 +864,23 @@ def create_cfo_message(
         )
     except ValueError as exc:
         if str(exc) == "Conversation not found.":
-            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found.",
+            ) from exc
+
         raise
 
-    answer = "".join(stream_cfo_answer(contextual_question, tool_result))
+    try:
+        answer = "".join(
+            stream_cfo_answer(contextual_question, tool_result)
+        )
+    except CFOAIServiceError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=public_ai_error_detail(),
+        ) from exc
+
     user_message, assistant_message = persist_cfo_exchange(
         db,
         conversation,
@@ -907,9 +912,18 @@ def stream_cfo_conversation_message(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),
 ):
+    enforce_rate_limit(
+        ai_limiter,
+        user_rate_limit_key(current_user.id, "ai:conversation_stream"),
+    )
+
     question = request.content.strip()
+
     if not question:
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot be empty.",
+        )
 
     try:
         conversation, contextual_question, tool_name, tool_result = prepare_cfo_exchange(
@@ -920,18 +934,32 @@ def stream_cfo_conversation_message(
         )
     except ValueError as exc:
         if str(exc) == "Conversation not found.":
-            raise HTTPException(status_code=404, detail="Conversation not found.") from exc
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation not found.",
+            ) from exc
+
         raise
 
     def generate():
         answer_parts: list[str] = []
+
         try:
-            yield json.dumps({"type": "metadata", "tool_used": tool_name}) + "\n"
+            yield json.dumps({
+                "type": "metadata",
+                "tool_used": tool_name,
+            }) + "\n"
+
             for token in stream_cfo_answer(contextual_question, tool_result):
                 answer_parts.append(token)
-                yield json.dumps({"type": "token", "content": token}) + "\n"
+
+                yield json.dumps({
+                    "type": "token",
+                    "content": token,
+                }) + "\n"
 
             answer = "".join(answer_parts)
+
             user_message, assistant_message = persist_cfo_exchange(
                 db,
                 conversation,
@@ -944,11 +972,21 @@ def stream_cfo_conversation_message(
                 "user_message_id": user_message.id,
                 "assistant_message_id": assistant_message.id,
             }) + "\n"
-        except Exception:
+
+        except CFOAIServiceError:
             db.rollback()
+
             yield json.dumps({
                 "type": "error",
-                "detail": "CFO analysis is temporarily unavailable. Please try again.",
+                "detail": public_ai_error_detail(),
+            }) + "\n"
+
+        except Exception:
+            db.rollback()
+
+            yield json.dumps({
+                "type": "error",
+                "detail": "An unexpected error occurred.",
             }) + "\n"
 
     return StreamingResponse(
@@ -956,10 +994,6 @@ def stream_cfo_conversation_message(
         media_type="application/x-ndjson",
     )
 
-
-# =========================================================
-# RAZORPAY WEBHOOK
-# =========================================================
 
 webhook_router = APIRouter(
     prefix="/webhooks",
@@ -972,11 +1006,11 @@ async def razorpay_webhook(
         request: Request,
         db: Session = Depends(get_db),
 ):
-    """Receive Razorpay payment events without JWT authentication.
+    enforce_rate_limit(
+        webhook_limiter,
+        request_rate_limit_key(request, "webhook:razorpay"),
+    )
 
-    Authentication is replaced here by Razorpay HMAC-SHA256 signature
-    verification over the exact raw request body.
-    """
     if not settings.RAZORPAY_WEBHOOK_SECRET:
         raise HTTPException(
             status_code=503,
@@ -1030,6 +1064,7 @@ async def razorpay_webhook(
         )
 
     event_name = payload.get("event")
+
     if not isinstance(event_name, str) or not event_name:
         raise HTTPException(
             status_code=400,
@@ -1045,6 +1080,23 @@ async def razorpay_webhook(
             owner_user_id=settings.RAZORPAY_WEBHOOK_USER_ID,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
 
-    return {"status": "ok", "result": result}
+    audit_event(
+        "webhook.razorpay_processed",
+        user_id=settings.RAZORPAY_WEBHOOK_USER_ID,
+        request_id=getattr(request.state, "request_id", None),
+        metadata={
+            "event_id": event_id,
+            "event_name": event_name,
+            "result": result,
+        },
+    )
+
+    return {
+        "status": "ok",
+        "result": result,
+    }

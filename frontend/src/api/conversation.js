@@ -1,111 +1,61 @@
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
+import {API} from "./config";
+async function request(path, options = {}, authFetch) {
+    const fetcher = authFetch || fetch;
 
-async function requestJson(
-    url,
+    return fetcher(`${API}${path}`, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+        },
+    });
+}
+
+export async function getConversation(
+    conversationId,
     options = {},
     authFetch
 ) {
-    const request = authFetch || fetch;
+    return request(
+        `/cfo/conversations/${conversationId}`,
+        options,
+        authFetch
+    );
+}
 
-    const response = await request(
-        `${API}${url}`,
+export async function deleteConversation(
+    conversationId,
+    options = {},
+    authFetch
+) {
+    return request(
+        `/cfo/conversations/${conversationId}`,
         {
             ...options,
-            headers: {
-                ...(options.body
-                    ? {
-                        "Content-Type":
-                            "application/json",
-                    }
-                    : {}),
-                ...(options.headers || {}),
-            },
-        }
-    );
-
-    let data = null;
-
-    try {
-        data = await response.json();
-    } catch {
-        data = null;
-    }
-
-    if (!response.ok) {
-        throw new Error(
-            data?.detail ||
-            `Request failed: ${response.status}`
-        );
-    }
-
-    return data;
-}
-
-export function listConversations(authFetch) {
-    return requestJson(
-        "/transactions/cfo/conversations",
-        {},
-        authFetch
-    );
-}
-
-export function createConversation(
-    title = null,
-    authFetch
-) {
-    return requestJson(
-        "/transactions/cfo/conversations",
-        {
-            method: "POST",
-            body: JSON.stringify({
-                title,
-            }),
-        },
-        authFetch
-    );
-}
-
-export function getConversation(
-    conversationId,
-    authFetch
-) {
-    return requestJson(
-        `/transactions/cfo/conversations/${conversationId}`,
-        {},
-        authFetch
-    );
-}
-
-export function sendConversationMessage(
-    conversationId,
-    content,
-    authFetch
-) {
-    return requestJson(
-        `/transactions/cfo/conversations/${conversationId}/messages`,
-        {
-            method: "POST",
-            body: JSON.stringify({
-                content,
-            }),
-        },
-        authFetch
-    );
-}
-
-export function deleteConversation(
-    conversationId,
-    authFetch
-) {
-    return requestJson(
-        `/transactions/cfo/conversations/${conversationId}`,
-        {
             method: "DELETE",
         },
         authFetch
     );
 }
 
-export {API};
+export async function renameConversation(
+    conversationId,
+    title,
+    options = {},
+    authFetch
+) {
+    return request(
+        `/cfo/conversations/${conversationId}`,
+        {
+            ...options,
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                ...(options.headers || {}),
+            },
+            body: JSON.stringify({ title }),
+        },
+        authFetch
+    );
+}
+
+export { API };

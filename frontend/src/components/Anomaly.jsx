@@ -7,6 +7,11 @@ function Anomaly({
                      chatLoading,
                      onInvestigate,
                  }) {
+    // The standalone anomaly endpoint wraps the score under `anomaly`,
+    // while the unified dashboard exposes the score object directly.
+    // Normalize both shapes here so the component cannot silently render zeros.
+    const data = anomalyData?.anomaly ?? anomalyData;
+
     return (
 
 
@@ -51,10 +56,10 @@ function Anomaly({
                     </p>
                 </div>
 
-                {anomalyData && (
+                {data && (
                     <SeverityBadge
                         severity={
-                            anomalyData.severity
+                            data.severity
                         }
                     />
                 )}
@@ -68,7 +73,7 @@ function Anomaly({
                 >
                     Analyzing financial anomalies...
                 </div>
-            ) : !anomalyData ? (
+            ) : !data ? (
                 <div
                     style={{
                         opacity: 0.5,
@@ -89,34 +94,34 @@ function Anomaly({
                     >
                         <MetricCard
                             title="Risk Score"
-                            value={`${anomalyData.score}/100`}
+                            value={`${data.score}/100`}
                             compact
                         />
 
                         <MetricCard
                             title="Failure Rate"
-                            value={`${anomalyData.current_failure_rate}%`}
-                            subtitle={`Previous: ${anomalyData.previous_failure_rate}%`}
+                            value={`${data.current_failure_rate}%`}
+                            subtitle={`Previous: ${data.previous_failure_rate}%`}
                             compact
                         />
 
                         <MetricCard
                             title="Failure Rate Change"
                             value={`${
-                                anomalyData.failure_rate_change >=
+                                data.failure_rate_change >=
                                 0
                                     ? "+"
                                     : ""
-                            }${anomalyData.failure_rate_change} pp`}
+                            }${data.failure_rate_change} pp`}
                             compact
                         />
 
                         <MetricCard
                             title="Failure Multiplier"
                             value={
-                                anomalyData.failure_rate_multiplier !=
+                                data.failure_rate_multiplier !=
                                 null
-                                    ? `${anomalyData.failure_rate_multiplier}×`
+                                    ? `${data.failure_rate_multiplier}×`
                                     : "N/A"
                             }
                             compact
@@ -125,7 +130,7 @@ function Anomaly({
                         <MetricCard
                             title="Revenue Impact"
                             value={`₹${Number(
-                                anomalyData.revenue_change ||
+                                data.revenue_change ||
                                 0
                             ).toLocaleString(
                                 "en-IN",
@@ -159,7 +164,7 @@ function Anomaly({
                                 Why CFOx flagged this
                             </h3>
 
-                            {anomalyData
+                            {data
                                 .reasons
                                 ?.length >
                             0 ? (
@@ -174,7 +179,7 @@ function Anomaly({
                                             0.8,
                                     }}
                                 >
-                                    {anomalyData.reasons.map(
+                                    {data.reasons.map(
                                         (
                                             reason,
                                             index
@@ -204,7 +209,7 @@ function Anomaly({
                             )}
                         </div>
 
-                        {anomalyData.severity !==
+                        {data.severity !==
                             "normal" && (
                                 <button
                                     onClick={

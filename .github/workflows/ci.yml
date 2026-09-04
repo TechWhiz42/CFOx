@@ -14,21 +14,35 @@ jobs:
     env:
       AUTH_SECRET_KEY: ci-secret-key-that-is-at-least-32-characters-long
       AUTH_ALGORITHM: HS256
+      AUTH_ISSUER: cfox-api
+      AUTH_AUDIENCE: cfox-web
       AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: 60
       DATABASE_URL: sqlite:///./ci.db
       RAZORPAY_WEBHOOK_SECRET: ci-webhook-secret
       RAZORPAY_WEBHOOK_USER_ID: 1
       DEBUG: "false"
+      ENVIRONMENT: test
+      ENABLE_API_DOCS: "false"
       LOG_LEVEL: INFO
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Backend tests
         run: python -m pytest -q
+
+      - name: Backend dependency audit
+        run: |
+          python -m pip install pip-audit
+          pip-audit -r requirements.txt
 
   frontend:
     runs-on: ubuntu-latest
@@ -37,12 +51,21 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install dependencies
+
+      - name: Install frontend dependencies
         run: npm ci
-      - name: Production build
+
+      - name: Frontend lint
+        run: npm run lint
+
+      - name: Frontend build
         run: npm run build
+
+      - name: Frontend dependency audit
+        run: npm audit --audit-level=high

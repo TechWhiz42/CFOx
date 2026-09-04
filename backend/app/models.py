@@ -1,25 +1,27 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
+    ForeignKey,
     Index,
     Integer,
     Numeric,
     String,
-    ForeignKey,
 )
 
 from app.database import Base
 
 
+def utc_now():
+    return datetime.now(timezone.utc)
+
+
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-    )
+    id = Column(Integer, primary_key=True)
 
     email = Column(
         String(255),
@@ -40,8 +42,8 @@ class User(Base):
     )
 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utc_now,
         nullable=False,
     )
 
@@ -49,11 +51,7 @@ class User(Base):
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True,
-    )
+    id = Column(Integer, primary_key=True, index=True)
 
     razorpay_payment_id = Column(
         String,
@@ -95,26 +93,31 @@ class Transaction(Base):
     )
 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utc_now,
         nullable=True,
     )
 
     __table_args__ = (
-        Index(
-            "ix_transactions_created_at",
-            "created_at",
+        CheckConstraint(
+            "amount > 0",
+            name="ck_transactions_amount_positive",
         ),
-        Index(
-            "ix_transactions_status_created_at",
-            "status",
-            "created_at",
+        CheckConstraint(
+            "currency = 'INR'",
+            name="ck_transactions_currency_inr",
         ),
-        Index(
-            "ix_transactions_payment_method_created_at",
-            "payment_method",
-            "created_at",
+        CheckConstraint(
+            "status IN ('success', 'failed', 'refunded')",
+            name="ck_transactions_status_allowed",
         ),
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN ('upi', 'card', 'netbanking')",
+            name="ck_transactions_payment_method_allowed",
+        ),
+        Index("ix_transactions_created_at", "created_at"),
+        Index("ix_transactions_status_created_at", "status", "created_at"),
+        Index("ix_transactions_payment_method_created_at", "payment_method", "created_at"),
         Index(
             "ix_transactions_payment_method_status_created_at",
             "payment_method",
@@ -128,18 +131,30 @@ class RazorpayWebhookEvent(Base):
     __tablename__ = "razorpay_webhook_events"
 
     id = Column(Integer, primary_key=True)
-    event_id = Column(String(255), unique=True, nullable=False, index=True)
-    event_name = Column(String(100), nullable=False)
-    received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    event_id = Column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    event_name = Column(
+        String(100),
+        nullable=False,
+    )
+
+    received_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
 
 
 class Conversation(Base):
     __tablename__ = "conversations"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-    )
+    id = Column(Integer, primary_key=True)
 
     user_id = Column(
         Integer,
@@ -154,14 +169,14 @@ class Conversation(Base):
     )
 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utc_now,
         nullable=False,
     )
 
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utc_now,
         nullable=False,
     )
 
@@ -169,17 +184,11 @@ class Conversation(Base):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id = Column(
-        Integer,
-        primary_key=True,
-    )
+    id = Column(Integer, primary_key=True)
 
     conversation_id = Column(
         Integer,
-        ForeignKey(
-            "conversations.id",
-            ondelete="CASCADE",
-        ),
+        ForeignKey("conversations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -195,12 +204,16 @@ class ChatMessage(Base):
     )
 
     created_at = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=utc_now,
         nullable=False,
     )
 
     __table_args__ = (
+        CheckConstraint(
+            "role IN ('user', 'assistant', 'system')",
+            name="ck_chat_messages_role_allowed",
+        ),
         Index(
             "ix_chat_messages_conversation_created_at",
             "conversation_id",

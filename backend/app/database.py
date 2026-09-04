@@ -49,11 +49,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-engine_kwargs = {
-    "pool_pre_ping": True,
-    "connect_args": {
-        "connect_timeout": 10,
-    },
-}

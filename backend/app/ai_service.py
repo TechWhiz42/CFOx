@@ -5,18 +5,14 @@ from typing import Literal
 import ollama
 from pydantic import BaseModel, Field, ValidationError
 
+from app.config import settings
+
 logger = logging.getLogger("cfox.ai")
 
-MODEL = "gemma3:1b"
+MODEL = settings.AI_MODEL
 
 
 class FinancialInsight(BaseModel):
-    """
-    Strict schema for AI-generated financial insights.
-
-    The AI is never trusted to define the API response shape.
-    """
-
     summary: str = Field(
         min_length=1,
         max_length=1000,
@@ -45,14 +41,6 @@ class FinancialInsight(BaseModel):
 
 
 def _fallback_insight(reason: str) -> dict:
-    """
-    Return a safe, stable response when AI generation
-    or validation fails.
-
-    The fallback is also validated through the same schema
-    used for model output.
-    """
-
     fallback = FinancialInsight(
         summary="Financial insight is temporarily unavailable.",
         severity="normal",
@@ -64,13 +52,7 @@ def _fallback_insight(reason: str) -> dict:
     return fallback.model_dump()
 
 
-def _clean_model_output(
-        content: str,
-) -> str:
-    """
-    Remove accidental Markdown code fences from model output.
-    """
-
+def _clean_model_output(content: str) -> str:
     content = content.strip()
 
     if content.startswith("```"):
@@ -87,14 +69,7 @@ def _clean_model_output(
     return content
 
 
-def _parse_and_validate(
-        content: str,
-) -> dict:
-    """
-    Parse model output and validate it against the
-    FinancialInsight schema.
-    """
-
+def _parse_and_validate(content: str) -> dict:
     content = _clean_model_output(content)
 
     if not content:
@@ -113,9 +88,7 @@ def _parse_and_validate(
         )
 
     try:
-        validated = FinancialInsight.model_validate(
-            raw_data
-        )
+        validated = FinancialInsight.model_validate(raw_data)
     except ValidationError as exc:
         raise ValueError(
             "AI response failed schema validation."
@@ -127,16 +100,6 @@ def _parse_and_validate(
 def generate_financial_insight(
         financial_data: dict,
 ) -> dict:
-    """
-    Generate a concise, validated financial insight.
-
-    The AI receives only verified financial data.
-
-    Any provider, parsing, or validation failure is converted
-    into a stable fallback response so internal errors do not
-    leak through the API.
-    """
-
     data = json.dumps(
         financial_data,
         separators=(",", ":"),
@@ -181,6 +144,9 @@ Rules:
         response = ollama.chat(
             model=MODEL,
             keep_alive="30m",
+            options={
+                "num_predict": settings.AI_MAX_TOKENS,
+            },
             messages=[
                 {
                     "role": "user",
@@ -190,9 +156,7 @@ Rules:
         )
 
     except Exception:
-        logger.exception(
-            "AI provider request failed."
-        )
+        logger.exception("AI provider request failed.")
 
         return _fallback_insight(
             "AI analysis is temporarily unavailable."
@@ -211,9 +175,7 @@ Rules:
         )
 
     if not isinstance(content, str):
-        logger.error(
-            "AI provider returned non-string content."
-        )
+        logger.error("AI provider returned non-string content.")
 
         return _fallback_insight(
             "AI analysis returned an invalid response."

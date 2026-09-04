@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -308,9 +308,7 @@ def persist_cfo_exchange(
         question: str,
         answer: str,
 ) -> tuple[ChatMessage, ChatMessage]:
-    """Persist the user question and assistant answer atomically."""
-
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     user_message = ChatMessage(
         conversation_id=conversation.id,
@@ -326,15 +324,16 @@ def persist_cfo_exchange(
         created_at=now,
     )
 
+    conversation.updated_at = now
+
     db.add(user_message)
     db.add(assistant_message)
-
-    conversation.updated_at = now
     db.add(conversation)
 
     db.commit()
 
     db.refresh(user_message)
     db.refresh(assistant_message)
+    db.refresh(conversation)
 
     return user_message, assistant_message

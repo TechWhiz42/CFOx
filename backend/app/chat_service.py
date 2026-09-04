@@ -1,30 +1,25 @@
 import json
+import logging
 
 import ollama
 
-MODEL = "gemma3:1b"
+from app.config import settings
+from app.reliability import CFOAIServiceError
+
+logger = logging.getLogger("cfox.chat")
+
+MODEL = settings.AI_MODEL
 
 
 def route_question(question: str) -> str:
-    """
-    Fast deterministic routing.
-
-    This avoids making a second LLM call just to decide
-    which financial operation is required.
-    """
-
     if not isinstance(question, str):
         return "none"
 
     text = question.lower().strip()
 
-    # A verified investigation context is already the result of an earlier
-    # deterministic investigation. Do not recursively trigger a tool from
-    # the evidence text itself.
     if "verified data:" in text and "use only these verified facts" in text:
         return "none"
 
-    # Check specific transaction queries first.
     failed_transaction_keywords = [
         "failed transaction",
         "failed transactions",
@@ -36,20 +31,13 @@ def route_question(question: str) -> str:
         "transactions failed",
     ]
 
-    if any(
-            keyword in text
-            for keyword in failed_transaction_keywords
+    if any(keyword in text for keyword in failed_transaction_keywords) or (
+            "failed" in text and ("payment" in text or "transaction" in text)
     ) or (
-            "failed" in text
-            and ("payment" in text or "transaction" in text)
-    ) or (
-            "failure" in text
-            and ("payment" in text or "transaction" in text)
+            "failure" in text and ("payment" in text or "transaction" in text)
     ):
         return "get_failed_transactions"
 
-    # Anomaly analysis must run before payment-method analysis because
-    # questions such as "unusual UPI payments" contain both concepts.
     anomaly_keywords = [
         "anomaly",
         "anomalies",
@@ -66,7 +54,6 @@ def route_question(question: str) -> str:
     if any(keyword in text for keyword in anomaly_keywords):
         return "get_anomaly_analysis"
 
-    # Payment-method analysis.
     payment_keywords = [
         "payment method",
         "payment methods",
@@ -80,13 +67,9 @@ def route_question(question: str) -> str:
         "compare payments",
     ]
 
-    if any(
-            keyword in text
-            for keyword in payment_keywords
-    ):
+    if any(keyword in text for keyword in payment_keywords):
         return "compare_payment_methods"
 
-    # Revenue analysis.
     revenue_keywords = [
         "revenue",
         "sales",
@@ -97,13 +80,9 @@ def route_question(question: str) -> str:
         "revenue trend",
     ]
 
-    if any(
-            keyword in text
-            for keyword in revenue_keywords
-    ):
+    if any(keyword in text for keyword in revenue_keywords):
         return "get_revenue_analysis"
 
-    # Cash-flow / risk analysis.
     cashflow_keywords = [
         "cash flow",
         "cashflow",
@@ -114,34 +93,26 @@ def route_question(question: str) -> str:
         "investigate first",
     ]
 
-    if any(
-            keyword in text
-            for keyword in cashflow_keywords
-    ):
+    if any(keyword in text for keyword in cashflow_keywords):
         return "get_cashflow_analysis"
 
     return "none"
 
 
-def stream_cfo_answer(
+def _build_prompt(
         question: str,
         tool_result=None,
-):
-    """
-    Stream the final CFO answer from Ollama.
-
-    This is the only LLM call in the request path.
-    """
-
+) -> str:
     if tool_result is None:
         context = "{}"
     else:
         context = json.dumps(
             tool_result,
             separators=(",", ":"),
+            default=str,
         )
 
-    prompt = f"""
+    return f"""
 You are CFOx, a financial controller.
 
 Verified financial data:
@@ -161,45 +132,61 @@ Rules:
 - Keep the answer under 120 words.
 """
 
-    response = ollama.chat(
-        model=MODEL,
-        keep_alive="30m",
-        options={
-            "num_predict": 120,
-        },
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        stream=True,
+
+def stream_cfo_answer(
+        question: str,
+        tool_result=None,
+):
+    prompt = _build_prompt(
+        question,
+        tool_result,
     )
 
-    for chunk in response:
-        content = chunk["message"]["content"]
+    try:
+        response = ollama.chat(
+            model=MODEL,
+            keep_alive="30m",
+            options={
+                "num_predict": settings.AI_MAX_TOKENS,
+            },
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            stream=True,
+        )
 
-        if content:
-            yield content
+        for chunk in response:
+            try:
+                content = chunk["message"]["content"]
+            except (KeyError, TypeError) as exc:
+                raise CFOAIServiceError(
+                    "AI provider returned invalid stream data."
+                ) from exc
+
+            if content:
+                yield content
+
+    except CFOAIServiceError:
+        raise
+
+    except Exception as exc:
+        logger.exception("Streaming AI provider request failed.")
+
+        raise CFOAIServiceError(
+            "AI provider request failed."
+        ) from exc
 
 
 def generate_cfo_answer(
         question: str,
         tool_result=None,
 ) -> str:
-    """
-    Non-streaming version.
-
-    Kept for compatibility with any existing
-    code that still uses generate_cfo_answer().
-    """
-
-    answer = ""
-
-    for token in stream_cfo_answer(
+    return "".join(
+        stream_cfo_answer(
             question,
             tool_result,
-    ):
-        answer += token
-
-    return answer
+        )
+    )

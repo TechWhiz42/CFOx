@@ -12,6 +12,30 @@ export default function Register({onLogin}) {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
+    function validatePassword(value) {
+        if (value.length < 12) {
+            return "Password must be at least 12 characters.";
+        }
+
+        if (!/[a-z]/.test(value)) {
+            return "Password must contain at least one lowercase letter.";
+        }
+
+        if (!/[A-Z]/.test(value)) {
+            return "Password must contain at least one uppercase letter.";
+        }
+
+        if (!/[0-9]/.test(value)) {
+            return "Password must contain at least one number.";
+        }
+
+        if (value.trim() !== value) {
+            return "Password must not start or end with whitespace.";
+        }
+
+        return "";
+    }
+
     async function handleSubmit(event) {
         event.preventDefault();
 
@@ -22,10 +46,10 @@ export default function Register({onLogin}) {
             return;
         }
 
-        if (password.length < 8) {
-            setError(
-                "Password must be at least 8 characters."
-            );
+        const passwordError = validatePassword(password);
+
+        if (passwordError) {
+            setError(passwordError);
             return;
         }
 
@@ -37,8 +61,6 @@ export default function Register({onLogin}) {
                 password
             );
 
-            // Automatically log the user in after
-            // successful registration.
             await login(
                 email.trim(),
                 password
@@ -78,9 +100,7 @@ export default function Register({onLogin}) {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <label>
-                        Email
-                    </label>
+                    <label>Email</label>
 
                     <input
                         type="email"
@@ -93,9 +113,7 @@ export default function Register({onLogin}) {
                         autoComplete="email"
                     />
 
-                    <label>
-                        Password
-                    </label>
+                    <label>Password</label>
 
                     <input
                         type="password"
@@ -103,14 +121,12 @@ export default function Register({onLogin}) {
                         onChange={(event) =>
                             setPassword(event.target.value)
                         }
-                        placeholder="At least 8 characters"
+                        placeholder="At least 12 characters"
                         required
                         autoComplete="new-password"
                     />
 
-                    <label>
-                        Confirm password
-                    </label>
+                    <label>Confirm password</label>
 
                     <input
                         type="password"
@@ -136,9 +152,7 @@ export default function Register({onLogin}) {
                 </form>
 
                 <div className="auth-switch">
-                    <span>
-                        Already have an account?
-                    </span>
+                    <span>Already have an account?</span>
 
                     <button
                         type="button"

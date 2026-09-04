@@ -12,7 +12,7 @@ import {
 import {buildVerifiedEvidence, getPaymentMethodLabel} from "./utils/investigation";
 import {beginRequest, isCurrentRequest, isSameRequest,} from "./utils/request";
 import {QUICK_QUESTIONS, TOOL_LABELS,} from "./utils/constants";
-import {parseApiResponse} from "./utils/apiResponse";
+import {getApiErrorMessage, parseApiResponse,} from "./utils/apiResponse";
 
 import CFOChat from "./components/CFOChat";
 import Anomaly from "./components/Anomaly";
@@ -23,16 +23,15 @@ import PaymentMethods from "./components/PaymentMethods";
 import HistoricalTrend from "./components/HistoricalTrend";
 import FinancialImpact from "./components/FinancialImpact";
 import ActionCenter from "./components/ActionCenter";
+import FinancialHealth from "./components/FinancialHealth";
 import RevenueTrend from "./components/RevenueTrend";
 import AIInsightSection from "./components/AIInsightSection";
 import TransactionManager from "./components/TransactionManager";
 import LoadingScreen from "./components/LoadingScreen";
 import ErrorScreen from "./components/ErrorScreen";
 import "./styles/cfox-razor-theme.css";
+import {API} from "./api/config";
 
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
 
 const AUTH_STYLES = `
     .cfox-auth-page {
@@ -474,6 +473,19 @@ function getAIInsight(paymentMethod, options = {}, authFetch) {
     );
 }
 
+function getFinancialHealth(paymentMethod, options = {}, authFetch) {
+    const query =
+        paymentMethod === "all"
+            ? ""
+            : `?payment_method=${encodeURIComponent(paymentMethod)}`;
+
+    return requestJson(
+        `/transactions/analytics/financial-health${query}`,
+        options,
+        authFetch
+    );
+}
+
 function getFinancialActions(paymentMethod, options = {}, authFetch) {
     const query =
         paymentMethod === "all"
@@ -548,6 +560,10 @@ function App() {
         useState(null);
     const [financialActionsLoading, setFinancialActionsLoading] =
         useState(true);
+
+    const [financialHealth, setFinancialHealth] = useState(null);
+    const [financialHealthLoading, setFinancialHealthLoading] =
+        useState(true);
     const [showSupportingSignals, setShowSupportingSignals] =
         useState(false);
 
@@ -597,7 +613,12 @@ function App() {
         } catch (err) {
             if (err?.name !== "AbortError") {
                 console.error("Dashboard error:", err);
-                setError("Unable to load financial data.");
+                setError(
+                    getApiErrorMessage(
+                        err,
+                        "Unable to load financial data."
+                    )
+                );
             }
 
         } finally {
@@ -748,6 +769,65 @@ function App() {
 
     /*
      * =====================================================
+     * FINANCIAL HEALTH
+     * =====================================================
+     */
+
+    async function loadFinancialHealth() {
+        const generation = requestGeneration.current;
+        const controller = beginRequest(
+            requestControllers,
+            "loadFinancialHealth"
+        );
+
+        try {
+            setFinancialHealthLoading(true);
+
+            const response = await getFinancialHealth(
+                paymentMethod,
+                {signal: controller.signal},
+                authFetch
+            );
+
+            const data = await parseApiResponse(
+                response,
+                "Financial health request failed"
+            );
+
+            if (
+                isCurrentRequest(
+                    requestControllers,
+                    requestGeneration,
+                    "loadFinancialHealth",
+                    controller,
+                    generation
+                )
+            ) {
+                setFinancialHealth(data);
+            }
+        } catch (err) {
+            if (err?.name !== "AbortError") {
+                console.error(
+                    "Financial health error:",
+                    err
+                );
+                setFinancialHealth(null);
+            }
+        } finally {
+            if (
+                isSameRequest(
+                    requestControllers,
+                    "loadFinancialHealth",
+                    controller
+                )
+            ) {
+                setFinancialHealthLoading(false);
+            }
+        }
+    }
+
+    /*
+     * =====================================================
      * FINANCIAL ACTIONS
      * =====================================================
      */
@@ -826,6 +906,7 @@ function App() {
         loadRevenueHistory();
         loadAnomaly();
         loadAlerts();
+        loadFinancialHealth();
         loadFinancialActions();
         loadConversations(true);
     }, [paymentMethod, authLoading, token, user]);
@@ -841,6 +922,7 @@ function App() {
             loadRevenueHistory(),
             loadAnomaly(),
             loadAlerts(),
+            loadFinancialHealth(),
             loadFinancialActions(),
         ]);
     }
@@ -1902,6 +1984,15 @@ Do not invent causes, numbers, or facts.
                         changes={changes}
                     />
                 </section>
+
+                <div className="cfox-panel">
+                    <FinancialHealth
+                        financialHealth={financialHealth}
+                        financialHealthLoading={
+                            financialHealthLoading
+                        }
+                    />
+                </div>
 
                 <div className="cfox-grid cfox-grid-risk">
                     <div className="cfox-panel">

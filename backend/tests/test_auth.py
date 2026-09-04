@@ -1,9 +1,10 @@
+from app.auth import create_access_token
 from app.auth import (
-    create_access_token,
     decode_access_token,
     hash_password,
     verify_password,
 )
+from app.models import User
 
 
 def test_password_hashing():
@@ -70,7 +71,7 @@ def test_duplicate_registration(client):
         },
     )
 
-    assert response.status_code == 409
+    assert response.status_code == 400
 
 
 def test_login(client):
@@ -94,12 +95,8 @@ def test_login(client):
 
     data = response.json()
 
-    assert data["token_type"] == "bearer"
-    assert isinstance(
-        data["access_token"],
-        str,
-    )
-    assert data["access_token"]
+    assert data["status"] == "authenticated"
+    assert "access_token" not in data
 
 
 def test_login_wrong_password(client):
@@ -128,7 +125,7 @@ def test_me_requires_authentication(client):
     assert response.status_code == 401
 
 
-def test_me_returns_authenticated_user(client):
+def test_me_returns_authenticated_user(client, db):
     client.post(
         "/auth/register",
         json={
@@ -137,15 +134,15 @@ def test_me_returns_authenticated_user(client):
         },
     )
 
-    login_response = client.post(
-        "/auth/login",
-        data={
-            "username": "me@example.com",
-            "password": "StrongPassword123",
-        },
+    from app.models import User
+
+    user = (
+        db.query(User)
+        .filter(User.email == "me@example.com")
+        .first()
     )
 
-    token = login_response.json()["access_token"]
+    token = create_access_token(user.id)
 
     response = client.get(
         "/auth/me",
@@ -171,7 +168,7 @@ def test_financial_endpoint_requires_authentication(client):
     assert response.headers["WWW-Authenticate"] == "Bearer"
 
 
-def test_financial_endpoint_accepts_valid_token(client):
+def test_financial_endpoint_accepts_valid_token(client,db):
     client.post(
         "/auth/register",
         json={
@@ -180,17 +177,13 @@ def test_financial_endpoint_accepts_valid_token(client):
         },
     )
 
-    login_response = client.post(
-        "/auth/login",
-        data={
-            "username": "protected@example.com",
-            "password": "StrongPassword123",
-        },
+    user = (
+        db.query(User)
+        .filter(User.email == "protected@example.com")
+        .first()
     )
 
-    assert login_response.status_code == 200
-
-    token = login_response.json()["access_token"]
+    token = create_access_token(user.id)
 
     response = client.get(
         "/transactions/dashboard",
@@ -247,7 +240,10 @@ def test_expired_access_token_is_rejected(client):
         {
             "sub": "123",
             "iat": datetime.now(timezone.utc) - timedelta(hours=2),
+            "nbf": datetime.now(timezone.utc) - timedelta(hours=2),
             "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+            "iss": settings.AUTH_ISSUER,
+            "aud": settings.AUTH_AUDIENCE,
         },
         settings.AUTH_SECRET_KEY,
         algorithm=settings.AUTH_ALGORITHM,
@@ -261,3 +257,84 @@ def test_expired_access_token_is_rejected(client):
     )
 
     assert response.status_code == 401
+
+def test_login_sets_http_only_cookie(client):
+    client.post(
+        "/auth/register",
+        json={
+            "email": "cookie@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    response = client.post(
+        "/auth/login",
+        data={
+            "username": "cookie@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    assert response.status_code == 200
+
+    set_cookie = response.headers.get("set-cookie", "")
+
+    assert "cfox_access_token=" in set_cookie
+    assert "HttpOnly" in set_cookie
+
+
+def test_me_accepts_auth_cookie(client):
+    client.post(
+        "/auth/register",
+        json={
+            "email": "cookie-me@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    login_response = client.post(
+        "/auth/login",
+        data={
+            "username": "cookie-me@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    response = client.get("/auth/me")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["email"] == "cookie-me@example.com"
+
+
+def test_logout_clears_auth_cookie(client):
+    client.post(
+        "/auth/register",
+        json={
+            "email": "logout-cookie@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    login_response = client.post(
+        "/auth/login",
+        data={
+            "username": "logout-cookie@example.com",
+            "password": "StrongPassword123",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    logout_response = client.post("/auth/logout")
+
+    assert logout_response.status_code == 200
+
+    set_cookie = logout_response.headers.get("set-cookie", "")
+
+    assert "cfox_access_token=" in set_cookie
+    assert "Max-Age=0" in set_cookie

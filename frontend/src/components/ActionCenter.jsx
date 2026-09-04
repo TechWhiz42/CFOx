@@ -1,6 +1,7 @@
 function ActionCenter({
                           alerts,
                           financialActions,
+                          financialActionsLoading = false,
                           paymentMethod,
                           onInvestigate,
                           chatLoading,
@@ -72,13 +73,26 @@ function ActionCenter({
      * evidence
      */
     const deterministicActions =
-        healthActions.map(
-            (action) => ({
-                ...action,
-                source:
-                    "financial_health",
-            })
-        );
+        healthActions.map((action) => ({
+            ...action,
+            source: "financial_health",
+            // Keep the action compatible with App.jsx's investigation flow.
+            message:
+                action.message ||
+                action.description ||
+                "Financial health signal requires review.",
+            recommended_action:
+                action.recommended_action ||
+                action.action ||
+                "Review the underlying financial signal.",
+            // Financial Action Engine evidence is an object; the investigation
+            // utility expects the legacy alert array shape.
+            evidence: Array.isArray(action.evidence)
+                ? action.evidence
+                : Object.entries(action.evidence || {}).map(
+                    ([label, value]) => ({ label, value })
+                ),
+        }));
 
     /*
      * Merge both systems.
@@ -201,15 +215,32 @@ function ActionCenter({
             ? "All payment methods"
             : paymentMethod.toUpperCase();
 
-    /*
-     * Don't render an empty Action Center.
-     */
+    if (financialActionsLoading) {
+        return (
+            <section className="cfox-action-center" aria-busy="true">
+                <div className="cfox-action-center-header">
+                    <div>
+                        <h2>Action Center</h2>
+                        <p>Analyzing verified financial signals · {methodLabel}</p>
+                    </div>
+                    <span className="cfox-action-center-loading">Updating</span>
+                </div>
+                <div className="cfox-action-center-skeletons">
+                    <div />
+                    <div />
+                </div>
+            </section>
+        );
+    }
+
+    // Don't render an empty Action Center after loading has completed.
     if (actions.length === 0) {
         return null;
     }
 
     return (
         <section
+            className="cfox-action-center"
             style={{
                 background:
                     "rgba(255,255,255,0.04)",

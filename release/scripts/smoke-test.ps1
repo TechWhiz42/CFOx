@@ -1,59 +1,57 @@
 param(
     [string]$BackendUrl = "http://127.0.0.1:8000",
-    [string]$FrontendUrl = "http://127.0.0.1"
+    [string]$FrontendUrl = "http://localhost/"
 )
 
 $ErrorActionPreference = "Stop"
 
-function Check-Url {
+$Failures = @()
+
+function Test-Url {
     param(
+        [string]$Name,
         [string]$Url,
-        [string]$Label
+        [int]$ExpectedStatus = 200
     )
 
     try {
         $response = Invoke-WebRequest `
             -Uri $Url `
             -UseBasicParsing `
-            -TimeoutSec 10
+            -TimeoutSec 15
 
-        Write-Host "[PASS] $Label -> HTTP $($response.StatusCode)"
-        return $true
-    }
-    catch {
-        Write-Host "[FAIL] $Label -> $($_.Exception.Message)"
-        return $false
+        if ([int]$response.StatusCode -eq $ExpectedStatus) {
+            Write-Host "[PASS] $Name -> HTTP $($response.StatusCode)" -ForegroundColor Green
+        } else {
+            Write-Host "[FAIL] $Name -> expected HTTP $ExpectedStatus, got HTTP $($response.StatusCode)" -ForegroundColor Red
+            $script:Failures += $Name
+        }
+    } catch {
+        Write-Host "[FAIL] $Name -> $($_.Exception.Message)" -ForegroundColor Red
+        $script:Failures += $Name
     }
 }
 
 Write-Host ""
 Write-Host "========================================"
-Write-Host " CFOx Production Smoke Test"
+Write-Host " CFOx Smoke Test"
 Write-Host "========================================"
 Write-Host ""
 
-$backendDocs = Check-Url `
-    -Url "$BackendUrl/docs" `
-    -Label "Backend OpenAPI endpoint"
-
-$frontend = Check-Url `
-    -Url $FrontendUrl `
-    -Label "Frontend"
+Test-Url "Backend liveness" "$BackendUrl/healthz"
+Test-Url "Backend readiness" "$BackendUrl/readyz"
+Test-Url "Frontend" $FrontendUrl
 
 Write-Host ""
 
-if ($backendDocs -and $frontend) {
-    Write-Host "========================================"
-    Write-Host " SMOKE TEST PASSED"
-    Write-Host "========================================"
-    Write-Host ""
-
+if ($Failures.Count -eq 0) {
+    Write-Host "SMOKE TEST PASSED" -ForegroundColor Green
     exit 0
 }
 
-Write-Host "========================================"
-Write-Host " SMOKE TEST FAILED"
-Write-Host "========================================"
-Write-Host ""
+Write-Host "SMOKE TEST FAILED: $($Failures.Count) failure(s)" -ForegroundColor Red
+$Failures | ForEach-Object {
+    Write-Host " - $_"
+}
 
 exit 1

@@ -1,6 +1,4 @@
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
+import {API} from "./config";
 
 async function requestJson(
     url,
@@ -162,7 +160,7 @@ export async function streamConversationMessage(
 
     try {
         while (true) {
-            const {value, done} =
+            const { value, done } =
                 await reader.read();
 
             if (done) {
@@ -171,7 +169,7 @@ export async function streamConversationMessage(
 
             buffer += decoder.decode(
                 value,
-                {stream: true}
+                { stream: true }
             );
 
             const lines = buffer.split("\n");
@@ -242,8 +240,10 @@ export async function streamConversationMessage(
                 if (
                     error instanceof Error &&
                     error.message !==
-                    "Unexpected end of JSON input"
+                        "CFO streaming failed."
                 ) {
+                    // Ignore incomplete/non-JSON trailing data.
+                } else {
                     throw error;
                 }
             }
@@ -253,5 +253,4 @@ export async function streamConversationMessage(
     }
 }
 
-export {API};
-
+export { API };

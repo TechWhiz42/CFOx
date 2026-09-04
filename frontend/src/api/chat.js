@@ -1,34 +1,38 @@
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
+import {API} from "./config";
 
-/**
- * Stream the authenticated CFO chat endpoint.
- *
- * authFetch is supplied by AuthContext so protected backend
- * endpoints receive the current JWT.
- */
-export async function streamCFOChat(
-    question,
+async function request(path, options = {}, authFetch) {
+    const fetcher = authFetch || fetch;
+
+    return fetcher(`${API}${path}`, {
+        ...options,
+        headers: {
+            ...(options.headers || {}),
+        },
+    });
+}
+
+export async function sendChatMessage(
+    message,
+    conversationId = null,
     options = {},
     authFetch
 ) {
-    const request = authFetch || fetch;
-
     return request(
-        `${API}/transactions/cfo/chat`,
+        "/cfo/chat",
         {
-            method: "POST",
             ...options,
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 ...(options.headers || {}),
             },
             body: JSON.stringify({
-                question,
+                message,
+                conversation_id: conversationId,
             }),
-        }
+        },
+        authFetch
     );
 }
 
-export {API};
+export { API };

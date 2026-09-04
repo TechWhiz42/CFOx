@@ -1,142 +1,193 @@
-import {createContext, useContext, useEffect, useState} from "react";
-
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";;
+import {createContext, useContext, useEffect, useState,} from "react";
+import {API} from "./api/config";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({children}) {
-    const [token, setToken] = useState(
-        () => localStorage.getItem("cfox_access_token")
-    );
-
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    function clearSession() {
+        setUser(null);
+        setLoading(false);
+    }
+
     useEffect(() => {
-        if (!token) {
-            setUser(null);
-            setLoading(false);
-            return;
-        }
+        let cancelled = false;
 
         async function loadUser() {
             try {
-                const response = await fetch(`${API}/auth/me`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error("Invalid or expired token");
-                }
+                const response = await fetch(
+                    `${API}/auth/me`,
+                    {
+                        method: "GET",
+                        credentials: "include",
+                    }
+                );
 
                 const data = await response.json();
-                setUser(data);
-            } catch (error) {
-                console.error("Authentication error:", error);
 
-                localStorage.removeItem("cfox_access_token");
-                setToken(null);
-                setUser(null);
-            } finally {
+                if (!response.ok) {
+                    throw new Error(
+                        data?.detail ||
+                        data?.message ||
+                        `Authentication failed (${response.status})`
+                    );
+                }
+
+                if (cancelled) {
+                    return;
+                }
+
+                setUser(data);
                 setLoading(false);
+            } catch (error) {
+                console.error(
+                    "Authentication error:",
+                    error
+                );
+
+                if (!cancelled) {
+                    clearSession();
+                }
             }
         }
 
         loadUser();
-    }, [token]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     async function login(email, password) {
         const body = new URLSearchParams();
-        body.set("username", email);
+
+        body.set(
+            "username",
+            email.trim().toLowerCase()
+        );
+
         body.set("password", password);
 
-        const response = await fetch(`${API}/auth/login`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body,
-        });
+        const response = await fetch(
+            `${API}/auth/login`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type":
+                        "application/x-www-form-urlencoded",
+                },
+                body,
+                credentials: "include",
+            }
+        );
 
-        const data = await response.json();
+        let data = null;
+
+        try {
+            data = await response.json();
+        } catch {
+            data = null;
+        }
 
         if (!response.ok) {
             throw new Error(
-                data?.detail || "Unable to login"
+                data?.detail ||
+                data?.message ||
+                `Unable to login (${response.status})`
             );
         }
 
-        const accessToken = data.access_token;
-
-        if (!accessToken) {
-            throw new Error("Login response did not contain an access token");
-        }
-
-        localStorage.setItem(
-            "cfox_access_token",
-            accessToken
+        const meResponse = await fetch(
+            `${API}/auth/me`,
+            {
+                method: "GET",
+                credentials: "include",
+            }
         );
 
-        setToken(accessToken);
+        const meData = await meResponse.json();
 
-        return accessToken;
+        if (!meResponse.ok) {
+            clearSession();
+
+            throw new Error(
+                meData?.detail ||
+                meData?.message ||
+                `Unable to verify login (${meResponse.status})`
+            );
+        }
+
+        setUser(meData);
+        setLoading(false);
+
+        return {
+            status: "authenticated",
+        };
     }
 
     async function register(email, password) {
-        const response = await fetch(`${API}/auth/register`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                email,
-                password,
-            }),
-        });
+        const response = await fetch(
+            `${API}/auth/register`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: email.trim().toLowerCase(),
+                    password,
+                }),
+                credentials: "include",
+            }
+        );
 
         const data = await response.json();
 
         if (!response.ok) {
             throw new Error(
-                data?.detail || "Unable to register"
+                data?.detail ||
+                data?.message ||
+                `Unable to register (${response.status})`
             );
         }
 
         return data;
     }
 
-    function logout() {
-        localStorage.removeItem("cfox_access_token");
-        setToken(null);
-        setUser(null);
+    async function logout() {
+        try {
+            await fetch(
+                `${API}/auth/logout`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                }
+            );
+        } finally {
+            clearSession();
+        }
     }
 
-    function authFetch(url, options = {}) {
-        const headers = new Headers(
-            options.headers || {}
-        );
+    async function authFetch(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            credentials: "include",
+            headers: new Headers(options.headers || {}),
+        });
 
-        if (token) {
-            headers.set(
-                "Authorization",
-                `Bearer ${token}`
-            );
+        if (response.status === 401) {
+            clearSession();
         }
 
-        return fetch(url, {
-            ...options,
-            headers,
-        });
+        return response;
     }
 
     return (
         <AuthContext.Provider
             value={{
-                token,
+                token: user ? "cookie" : null,
                 user,
                 loading,
                 login,

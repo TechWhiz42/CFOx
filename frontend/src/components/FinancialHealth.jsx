@@ -1,6 +1,7 @@
 function FinancialHealth({
-                             financialHealth, financialHealthLoading,
-                         }) {
+    financialHealth,
+    financialHealthLoading,
+}) {
     const formatScore = (value) => {
         const score = Number(value);
 
@@ -44,13 +45,13 @@ function FinancialHealth({
     const components = financialHealth?.health?.components || {};
 
     const rows = [{
-        key: "revenue", label: "Revenue trend", value: components.revenue, max: 30,
+        key: "revenue", label: "Revenue trend", value: components.revenue, fallbackMax: 30,
     }, {
-        key: "payment_reliability", label: "Payment reliability", value: components.payment_reliability, max: 30,
+        key: "payment_reliability", label: "Payment reliability", value: components.payment_reliability, fallbackMax: 30,
     }, {
-        key: "cashflow", label: "Cash-flow risk", value: components.cashflow, max: 25,
+        key: "cashflow", label: "Cash-flow risk", value: components.cashflow, fallbackMax: 25,
     }, {
-        key: "anomaly", label: "Anomaly risk", value: components.anomaly, max: 15,
+        key: "anomaly", label: "Anomaly risk", value: components.anomaly, fallbackMax: 15,
     },];
 
     return (<section className="cfox-financial-health">
@@ -89,19 +90,7 @@ function FinancialHealth({
                 <div
                     className="cfox-financial-health-score-ring"
                     style={{
-                        background: `
-            radial-gradient(
-                circle at center,
-                #ffffff 57%,
-                transparent 58%
-            ),
-            conic-gradient(
-                #2f66ff 0deg,
-                #5b7cff ${Math.max(0, Math.min(Number(financialHealth.health.score) || 0, 100)) * 3.6}deg,
-                #e8edf5 ${Math.max(0, Math.min(Number(financialHealth.health.score) || 0, 100)) * 3.6}deg,
-                #e8edf5 360deg
-            )
-        `,
+                        "--cfox-health-score-angle": `${Math.max(0, Math.min(Number(financialHealth.health.score) || 0, 100)) * 3.6}deg`,
                     }}
                 >
                     <div>
@@ -122,11 +111,14 @@ function FinancialHealth({
 
             <div className="cfox-financial-health-breakdown">
                 {rows.map((row) => {
-                    const value = Number(row.value);
+                    const value = Number(row.value?.score);
+                    const max = Number(row.value?.max_score ?? row.fallbackMax);
 
-                    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(value, row.max)) : 0;
+                    const safeValue = Number.isFinite(value) && Number.isFinite(max)
+                        ? Math.max(0, Math.min(value, max))
+                        : 0;
 
-                    const percentage = row.max > 0 ? (safeValue / row.max) * 100 : 0;
+                    const percentage = max > 0 ? (safeValue / max) * 100 : 0;
 
                     return (<div
                         className="cfox-health-row"
@@ -138,7 +130,7 @@ function FinancialHealth({
                                         </span>
 
                             <strong>
-                                {Number.isFinite(value) ? `${value.toFixed(1)} / ${row.max}` : "--"}
+                                {Number.isFinite(value) && Number.isFinite(max) ? `${value.toFixed(1)} / ${max}` : "--"}
                             </strong>
                         </div>
 

@@ -1,7 +1,4 @@
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
-
+import {API} from "./config";
 
 async function request(path, options = {}, authFetch) {
     const fetcher = authFetch || fetch;
@@ -13,7 +10,6 @@ async function request(path, options = {}, authFetch) {
         },
     });
 }
-
 
 export async function getDashboard(
     paymentMethod = "all",
@@ -32,7 +28,6 @@ export async function getDashboard(
     );
 }
 
-
 export async function getPaymentMethods(
     options = {},
     authFetch
@@ -43,7 +38,6 @@ export async function getPaymentMethods(
         authFetch
     );
 }
-
 
 export async function getRevenueHistory(
     paymentMethod = "all",
@@ -65,7 +59,6 @@ export async function getRevenueHistory(
     );
 }
 
-
 export async function getAnomaly(
     paymentMethod = "all",
     options = {},
@@ -82,7 +75,6 @@ export async function getAnomaly(
         authFetch
     );
 }
-
 
 export async function getAlerts(
     paymentMethod = "all",
@@ -101,7 +93,6 @@ export async function getAlerts(
     );
 }
 
-
 export async function getAIInsight(
     paymentMethod = "all",
     options = {},
@@ -118,7 +109,6 @@ export async function getAIInsight(
         authFetch
     );
 }
-
 
 export async function getFinancialHealth(
     paymentMethod = "all",
@@ -137,7 +127,6 @@ export async function getFinancialHealth(
     );
 }
 
-
 export async function getFinancialActions(
     paymentMethod = "all",
     options = {},
@@ -154,6 +143,5 @@ export async function getFinancialActions(
         authFetch
     );
 }
-
 
 export { API };
