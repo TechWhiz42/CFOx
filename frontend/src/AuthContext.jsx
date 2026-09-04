@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import {createContext, useContext, useEffect, useState} from "react";
 
 const API = "http://127.0.0.1:8000";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
+export function AuthProvider({children}) {
     const [token, setToken] = useState(
         () => localStorage.getItem("cfox_access_token")
     );

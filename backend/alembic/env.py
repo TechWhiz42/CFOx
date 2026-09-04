@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from app.database import Base
-from app import models
-
 
 load_dotenv()
 
@@ -27,7 +25,6 @@ config.set_main_option(
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
 
 target_metadata = Base.metadata
 

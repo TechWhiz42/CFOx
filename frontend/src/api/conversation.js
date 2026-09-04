@@ -36,7 +36,7 @@ async function requestJson(
     if (!response.ok) {
         throw new Error(
             data?.detail ||
-                `Request failed: ${response.status}`
+            `Request failed: ${response.status}`
         );
     }
 
@@ -108,4 +108,4 @@ export function deleteConversation(
     );
 }
 
-export { API };
+export {API};

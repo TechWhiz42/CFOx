@@ -7,10 +7,10 @@ from app.models import Transaction
 
 
 def get_revenue_history(
-    db: Session,
-    days: int = 30,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        days: int = 30,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Return daily successful revenue for the requested period.

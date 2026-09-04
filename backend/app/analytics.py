@@ -6,12 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.models import Transaction
 
-
 PAYMENT_METHODS = ("upi", "card", "netbanking")
 
 
 def normalize_payment_method(
-    payment_method: str | None,
+        payment_method: str | None,
 ) -> str | None:
     """
     Normalize and validate a payment-method filter.
@@ -60,11 +59,11 @@ def _build_metrics(total, failed, revenue) -> dict:
 
 
 def calculate_period_metrics(
-    db: Session,
-    start_date: datetime,
-    end_date: datetime,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     payment_method = normalize_payment_method(payment_method)
 
@@ -114,9 +113,9 @@ def calculate_period_metrics(
 
 
 def compare_periods(
-    db: Session,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     payment_method = normalize_payment_method(payment_method)
 
@@ -210,8 +209,8 @@ def calculate_anomaly_score(comparison: dict) -> dict:
 
     if previous["revenue"] > 0:
         revenue_percent = (
-            revenue_change / previous["revenue"]
-        ) * 100
+                                  revenue_change / previous["revenue"]
+                          ) * 100
 
         if revenue_percent <= -20:
             score += 30
@@ -245,8 +244,8 @@ def calculate_anomaly_score(comparison: dict) -> dict:
 
 
 def compare_payment_methods(
-    db: Session,
-    user_id: int | None = None,
+        db: Session,
+        user_id: int | None = None,
 ) -> dict:
     """
     Compare current vs previous-period performance for all
@@ -383,18 +382,18 @@ def compare_payment_methods(
         )
 
         failure_rate_change = (
-            current_failure_rate - previous_failure_rate
+                current_failure_rate - previous_failure_rate
         )
 
         if previous_failure_rate > 0:
             failure_rate_multiplier = (
-                current_failure_rate / previous_failure_rate
+                    current_failure_rate / previous_failure_rate
             )
         else:
             failure_rate_multiplier = None
 
         revenue_change = (
-            current_revenue - previous_revenue
+                current_revenue - previous_revenue
         )
 
         result[row.payment_method] = {
@@ -474,16 +473,18 @@ def compare_payment_methods(
             }
 
     return result
+
+
 # =========================================================
 # PHASE 9 — ADVANCED FINANCIAL ANALYTICS
 # =========================================================
 
 def calculate_advanced_kpis(
-    db: Session,
-    start_date: datetime,
-    end_date: datetime,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        start_date: datetime,
+        end_date: datetime,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """Calculate CFO-level KPIs for a time window."""
     payment_method = normalize_payment_method(payment_method)
@@ -543,10 +544,10 @@ def calculate_advanced_kpis(
 
 
 def get_daily_performance(
-    db: Session,
-    days: int = 30,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        days: int = 30,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> list[dict]:
     """Return one aggregate row per UTC calendar day."""
     payment_method = normalize_payment_method(payment_method)
@@ -563,7 +564,8 @@ def get_daily_performance(
         func.coalesce(func.sum(case((Transaction.status == "success", 1), else_=0)), 0).label("successful"),
         func.coalesce(func.sum(case((Transaction.status == "failed", 1), else_=0)), 0).label("failed"),
         func.coalesce(func.sum(case((Transaction.status == "refunded", 1), else_=0)), 0).label("refunded"),
-        func.coalesce(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)), 0).label("revenue"),
+        func.coalesce(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)), 0).label(
+            "revenue"),
     ).filter(
         Transaction.created_at >= start_date,
         Transaction.created_at < end_date,
@@ -608,11 +610,11 @@ def get_daily_performance(
 
 
 def get_customer_concentration(
-    db: Session,
-    days: int = 30,
-    top_n: int = 10,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        days: int = 30,
+        top_n: int = 10,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """Measure revenue concentration among identifiable customers."""
     payment_method = normalize_payment_method(payment_method)
@@ -621,7 +623,8 @@ def get_customer_concentration(
 
     base = db.query(
         Transaction.customer_id.label("customer_id"),
-        func.coalesce(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)), 0).label("revenue"),
+        func.coalesce(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)), 0).label(
+            "revenue"),
         func.sum(case((Transaction.status == "success", 1), else_=0)).label("successful_transactions"),
     ).filter(
         Transaction.created_at >= start_date,
@@ -634,7 +637,8 @@ def get_customer_concentration(
     if user_id is not None:
         base = base.filter(Transaction.user_id == user_id)
 
-    rows = base.group_by(Transaction.customer_id).order_by(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)).desc()).limit(top_n).all()
+    rows = base.group_by(Transaction.customer_id).order_by(
+        func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)).desc()).limit(top_n).all()
 
     total_query = db.query(
         func.coalesce(func.sum(case((Transaction.status == "success", Transaction.amount), else_=0)), 0)

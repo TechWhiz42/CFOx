@@ -5,7 +5,6 @@ from typing import Literal
 import ollama
 from pydantic import BaseModel, Field, ValidationError
 
-
 logger = logging.getLogger("cfox.ai")
 
 MODEL = "gemma3:1b"
@@ -66,7 +65,7 @@ def _fallback_insight(reason: str) -> dict:
 
 
 def _clean_model_output(
-    content: str,
+        content: str,
 ) -> str:
     """
     Remove accidental Markdown code fences from model output.
@@ -89,7 +88,7 @@ def _clean_model_output(
 
 
 def _parse_and_validate(
-    content: str,
+        content: str,
 ) -> dict:
     """
     Parse model output and validate it against the
@@ -126,7 +125,7 @@ def _parse_and_validate(
 
 
 def generate_financial_insight(
-    financial_data: dict,
+        financial_data: dict,
 ) -> dict:
     """
     Generate a concise, validated financial insight.

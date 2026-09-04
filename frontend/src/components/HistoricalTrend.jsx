@@ -1,19 +1,19 @@
 function HistoricalTrend({
-    revenueHistory,
-}) {
+                             revenueHistory,
+                         }) {
     const points = Array.isArray(
         revenueHistory?.history
     )
         ? revenueHistory.history
         : Array.isArray(
-              revenueHistory?.data
-          )
-          ? revenueHistory.data
-          : Array.isArray(
+            revenueHistory?.data
+        )
+            ? revenueHistory.data
+            : Array.isArray(
                 revenueHistory
             )
-            ? revenueHistory
-            : [];
+                ? revenueHistory
+                : [];
 
     if (points.length < 2) {
         return null;
@@ -22,9 +22,9 @@ function HistoricalTrend({
     const getRevenue = (item) =>
         Number(
             item?.revenue ??
-                item?.total_revenue ??
-                item?.daily_revenue ??
-                0
+            item?.total_revenue ??
+            item?.daily_revenue ??
+            0
         );
 
     const values = points.map(getRevenue);
@@ -44,10 +44,10 @@ function HistoricalTrend({
     const average = (arr) =>
         arr.length
             ? arr.reduce(
-                  (sum, value) =>
-                      sum + value,
-                  0
-              ) / arr.length
+            (sum, value) =>
+                sum + value,
+            0
+        ) / arr.length
             : 0;
 
     const earlierAverage =
@@ -59,38 +59,38 @@ function HistoricalTrend({
     const recentChange =
         earlierAverage !== 0
             ? ((recentAverage -
-                  earlierAverage) /
-                  earlierAverage) *
-              100
+                    earlierAverage) /
+                earlierAverage) *
+            100
             : 0;
 
     const latestChange =
         previous !== 0
             ? ((latest - previous) /
-                  previous) *
-              100
+                previous) *
+            100
             : 0;
 
     const direction =
         recentChange < -1
             ? "deteriorating"
             : recentChange > 1
-              ? "improving"
-              : "stable";
+                ? "improving"
+                : "stable";
 
     const directionLabel =
         direction === "deteriorating"
             ? "Deteriorating"
             : direction === "improving"
-              ? "Improving"
-              : "Stable";
+                ? "Improving"
+                : "Stable";
 
     const directionColor =
         direction === "deteriorating"
             ? "#fb7185"
             : direction === "improving"
-              ? "#34d399"
-              : "#fbbf24";
+                ? "#34d399"
+                : "#fbbf24";
 
     const formatCurrency = (value) =>
         `₹${Number(value).toLocaleString(
@@ -124,7 +124,7 @@ function HistoricalTrend({
                 }}
             >
                 <div>
-                    <h2 style={{ margin: 0 }}>
+                    <h2 style={{margin: 0}}>
                         Historical Trend
                     </h2>
 
@@ -150,7 +150,7 @@ function HistoricalTrend({
                         background:
                             `${directionColor}18`,
                         color:
-                            directionColor,
+                        directionColor,
                         fontSize:
                             "10px",
                         fontWeight:
@@ -198,8 +198,8 @@ function HistoricalTrend({
                         recentChange < 0
                             ? "#fb7185"
                             : recentChange > 0
-                              ? "#34d399"
-                              : "#fbbf24"
+                                ? "#34d399"
+                                : "#fbbf24"
                     }
                 />
 
@@ -216,8 +216,8 @@ function HistoricalTrend({
                         latestChange < 0
                             ? "#fb7185"
                             : latestChange > 0
-                              ? "#34d399"
-                              : "#fbbf24"
+                                ? "#34d399"
+                                : "#fbbf24"
                     }
                 />
             </div>
@@ -263,10 +263,10 @@ function HistoricalTrend({
 
 
 function TrendMetric({
-    label,
-    value,
-    accent,
-}) {
+                         label,
+                         value,
+                         accent,
+                     }) {
     return (
         <div
             style={{

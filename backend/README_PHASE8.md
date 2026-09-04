@@ -13,7 +13,8 @@ Phase 8 moves transaction ingestion from a manual frontend form toward server-to
 - Webhook-created transactions get their owner from `RAZORPAY_WEBHOOK_USER_ID`, never from request data.
 - Webhook event IDs are persisted to prevent duplicate processing.
 
-Razorpay explicitly recommends validating `X-Razorpay-Signature` with HMAC-SHA256 over the unmodified request body and using `x-razorpay-event-id` for duplicate detection.
+Razorpay explicitly recommends validating `X-Razorpay-Signature` with HMAC-SHA256 over the unmodified request body and
+using `x-razorpay-event-id` for duplicate detection.
 
 ## Configuration
 
@@ -24,7 +25,9 @@ RAZORPAY_WEBHOOK_SECRET=your-webhook-secret
 RAZORPAY_WEBHOOK_USER_ID=4
 ```
 
-The owner ID is intentionally server-side. For the current single-merchant CFOx deployment, all Razorpay events belong to that configured merchant user. A future multi-merchant version should map Razorpay `account_id` to a CFOx user instead.
+The owner ID is intentionally server-side. For the current single-merchant CFOx deployment, all Razorpay events belong
+to that configured merchant user. A future multi-merchant version should map Razorpay `account_id` to a CFOx user
+instead.
 
 ## Migration
 
@@ -43,4 +46,5 @@ x-razorpay-event-id: evt_test_001
 Content-Type: application/json
 ```
 
-The endpoint deliberately does not use the normal JWT dependency because Razorpay cannot authenticate with a CFOx user token. Its authentication mechanism is the Razorpay signature.
+The endpoint deliberately does not use the normal JWT dependency because Razorpay cannot authenticate with a CFOx user
+token. Its authentication mechanism is the Razorpay signature.

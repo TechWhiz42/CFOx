@@ -1,11 +1,11 @@
-import { MiniMetric } from "./Metrics";
+import {MiniMetric} from "./Metrics";
 
 function PaymentMethodDetail({
-    method,
-    onClose,
-    onInvestigate,
-    chatLoading,
-}) {
+                                 method,
+                                 onClose,
+                                 onInvestigate,
+                                 chatLoading,
+                             }) {
     const current = method?.current_period || {};
     const previous = method?.previous_period || {};
 
@@ -26,15 +26,15 @@ function PaymentMethodDetail({
         failureRate >= 20
             ? "critical"
             : failureRate >= 10
-              ? "warning"
-              : "normal";
+                ? "warning"
+                : "normal";
 
     const riskColor =
         riskLevel === "critical"
             ? "#fb7185"
             : riskLevel === "warning"
-              ? "#fbbf24"
-              : "#34d399";
+                ? "#fbbf24"
+                : "#34d399";
 
     return (
         <div
@@ -87,8 +87,8 @@ function PaymentMethodDetail({
                                     riskLevel === "critical"
                                         ? "rgba(251,113,133,0.1)"
                                         : riskLevel === "warning"
-                                          ? "rgba(251,191,36,0.1)"
-                                          : "rgba(52,211,153,0.1)",
+                                            ? "rgba(251,191,36,0.1)"
+                                            : "rgba(52,211,153,0.1)",
                                 border: `1px solid ${riskColor}33`,
                             }}
                         >

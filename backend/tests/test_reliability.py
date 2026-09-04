@@ -9,9 +9,9 @@ from app.reliability import CFOAIServiceError
 
 
 def _auth_client(
-    client,
-    db,
-    email="reliability@example.com",
+        client,
+        db,
+        email="reliability@example.com",
 ):
     user = User(
         email=email,
@@ -64,9 +64,9 @@ def test_request_id_is_preserved(client):
 
 
 def test_internal_error_is_safe_and_contains_request_id(
-    client,
-    db,
-    monkeypatch,
+        client,
+        db,
+        monkeypatch,
 ):
     _auth_client(
         client,
@@ -115,15 +115,15 @@ def test_internal_error_is_safe_and_contains_request_id(
     )
 
     assert (
-        "SECRET_DATABASE_DETAILS"
-        not in response.text
+            "SECRET_DATABASE_DETAILS"
+            not in response.text
     )
 
 
 def test_legacy_cfo_stream_sanitizes_ai_failure(
-    client,
-    db,
-    monkeypatch,
+        client,
+        db,
+        monkeypatch,
 ):
     _auth_client(
         client,
@@ -173,8 +173,8 @@ def test_legacy_cfo_stream_sanitizes_ai_failure(
     }
 
     assert (
-        "OLLAMA_INTERNAL_SECRET"
-        not in response.text
+            "OLLAMA_INTERNAL_SECRET"
+            not in response.text
     )
 
 
@@ -237,8 +237,8 @@ def test_webhook_rejects_overlong_event_id(client):
 
 
 def test_webhook_duplicate_event_is_idempotent(
-    client,
-    db,
+        client,
+        db,
 ):
     event_id = (
         "reliability_duplicate_event_001"

@@ -11,6 +11,10 @@ from pydantic import (
 )
 
 
+# =========================================================
+# USER / AUTH
+# =========================================================
+
 class UserSignup(BaseModel):
     email: EmailStr
 
@@ -36,41 +40,94 @@ class LoginResponse(BaseModel):
     token_type: str
 
 
-SUPPORTED_PAYMENT_METHODS = {"upi", "card", "netbanking"}
-TRANSACTION_STATUSES = {"success", "failed", "refunded"}
+# =========================================================
+# TRANSACTIONS
+# =========================================================
+
+SUPPORTED_PAYMENT_METHODS = {
+    "upi",
+    "card",
+    "netbanking",
+}
+
+TRANSACTION_STATUSES = {
+    "success",
+    "failed",
+    "refunded",
+}
 
 
 class TransactionCreate(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
-    """Client-controlled transaction fields.
+    """
+    Client-controlled transaction fields.
 
-    user_id is intentionally absent: ownership always comes from the JWT.
+    user_id is intentionally absent.
+    Ownership always comes from the authenticated JWT.
     """
 
-    razorpay_payment_id: str = Field(min_length=1, max_length=255)
-    amount: Decimal = Field(gt=Decimal("0"), max_digits=18, decimal_places=2)
-    currency: str = Field(default="INR", min_length=3, max_length=3)
-    status: Literal["success", "failed", "refunded"]
-    payment_method: str | None = Field(default=None, max_length=32)
-    customer_id: str | None = Field(default=None, max_length=255)
+    razorpay_payment_id: str = Field(
+        min_length=1,
+        max_length=255,
+    )
+
+    amount: Decimal = Field(
+        gt=Decimal("0"),
+        max_digits=18,
+        decimal_places=2,
+    )
+
+    currency: str = Field(
+        default="INR",
+        min_length=3,
+        max_length=3,
+    )
+
+    status: Literal[
+        "success",
+        "failed",
+        "refunded",
+    ]
+
+    payment_method: str | None = Field(
+        default=None,
+        max_length=32,
+    )
+
+    customer_id: str | None = Field(
+        default=None,
+        max_length=255,
+    )
+
     created_at: datetime | None = None
 
-    @field_validator("razorpay_payment_id", "currency", "customer_id", mode="before")
+    @field_validator(
+        "razorpay_payment_id",
+        "currency",
+        "customer_id",
+        mode="before",
+    )
     @classmethod
     def strip_strings(cls, value):
         if value is None:
             return value
+
         if not isinstance(value, str):
             raise ValueError("must be a string")
+
         return value.strip()
 
     @field_validator("currency")
     @classmethod
     def validate_currency(cls, value: str) -> str:
         value = value.upper()
+
         if value != "INR":
             raise ValueError("currency must be INR")
+
         return value
 
     @field_validator("payment_method", mode="before")
@@ -78,13 +135,20 @@ class TransactionCreate(BaseModel):
     def normalize_payment_method(cls, value):
         if value is None:
             return None
+
         if not isinstance(value, str):
-            raise ValueError("payment_method must be a string")
+            raise ValueError(
+                "payment_method must be a string"
+            )
+
         value = value.strip().lower()
+
         if value not in SUPPORTED_PAYMENT_METHODS:
             raise ValueError(
-                "payment_method must be one of: upi, card, netbanking"
+                "payment_method must be one of: "
+                "upi, card, netbanking"
             )
+
         return value
 
 
@@ -98,9 +162,21 @@ class TransactionResponse(TransactionCreate):
     )
 
 
+# =========================================================
+# AI FINANCIAL INVESTIGATION
+# =========================================================
+
 class AIInvestigationRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=2000)
-    days: int = Field(default=7, ge=1, le=90)
+    question: str = Field(
+        min_length=1,
+        max_length=2000,
+    )
+
+    days: int = Field(
+        default=7,
+        ge=1,
+        le=90,
+    )
 
 
 class AIInvestigationResponse(BaseModel):
@@ -114,15 +190,27 @@ class AIInvestigationResponse(BaseModel):
     impact: str
     recommendations: list[str]
 
+
+# =========================================================
+# PERSISTENT CFO CONVERSATIONS
+# =========================================================
+
 class CFOConversationMessageRequest(BaseModel):
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(
+        min_length=1,
+        max_length=4000,
+    )
 
     @field_validator("content")
     @classmethod
     def validate_content(cls, value: str) -> str:
         value = value.strip()
+
         if not value:
-            raise ValueError("Message cannot be empty.")
+            raise ValueError(
+                "Message cannot be empty."
+            )
+
         return value
 
 
@@ -133,9 +221,9 @@ class CFOConversationMessage(BaseModel):
     content: str
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
-
-
+    model_config = ConfigDict(
+        from_attributes=True,
+    )
 
 
 class CFOConversationCreateRequest(BaseModel):
@@ -146,7 +234,11 @@ class CFOConversationCreateRequest(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def normalize_title(cls, value: str | None) -> str | None:
+    def normalize_title(
+            cls,
+            value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -159,6 +251,7 @@ class CFOConversationCreateRequest(BaseModel):
 
 
 class CFOConversationResponse(BaseModel):
+
     id: int
     user_id: int
     title: str | None
@@ -170,11 +263,16 @@ class CFOConversationResponse(BaseModel):
     )
 
 
-class CFOConversationDetailResponse(CFOConversationResponse):
-    messages: list[CFOConversationMessage] = []
+class CFOConversationDetailResponse(
+    CFOConversationResponse
+):
+    messages: list[CFOConversationMessage] = Field(
+        default_factory=list,
+    )
 
 
 class CFOConversationMessageResponse(BaseModel):
+
     conversation_id: int
     tool_used: str
     user_message: CFOConversationMessage

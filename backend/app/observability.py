@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 
 from app.reliability import CFOAIServiceError, public_ai_error_detail
 
-
 logger = logging.getLogger("cfox")
 
 

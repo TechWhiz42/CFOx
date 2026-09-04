@@ -9,7 +9,6 @@ from app.cashflow import calculate_cashflow_risk
 from app.forecasting import forecast_revenue
 from app.models import Transaction
 
-
 PAYMENT_METHODS = (
     "upi",
     "card",
@@ -58,13 +57,13 @@ def get_revenue_analysis(db: Session, user_id: int | None = None) -> dict:
     )
 
     revenue_change = (
-        current_period_revenue - previous_period_revenue
+            current_period_revenue - previous_period_revenue
     )
 
     if previous_period_revenue != 0:
         revenue_change_percentage = (
-            revenue_change / previous_period_revenue
-        ) * 100
+                                            revenue_change / previous_period_revenue
+                                    ) * 100
     else:
         revenue_change_percentage = None
 
@@ -134,10 +133,10 @@ def get_cashflow_analysis(db: Session, user_id: int | None = None) -> dict:
 
 
 def get_failed_transactions(
-    db: Session,
-    hours: int = 24,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        hours: int = 24,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Return recent failed transactions.

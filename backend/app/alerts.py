@@ -10,9 +10,9 @@ def _severity_rank(severity: str) -> int:
 
 
 def generate_financial_alerts(
-    analysis: dict[str, Any],
-    cashflow: dict[str, Any] | None = None,
-    anomaly: dict[str, Any] | None = None,
+        analysis: dict[str, Any],
+        cashflow: dict[str, Any] | None = None,
+        anomaly: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Generate prioritized financial alerts.
@@ -65,8 +65,8 @@ def generate_financial_alerts(
     if previous_revenue > 0:
         revenue_change_percent = round(
             (
-                (current_revenue - previous_revenue)
-                / previous_revenue
+                    (current_revenue - previous_revenue)
+                    / previous_revenue
             )
             * 100,
             2,
@@ -135,14 +135,14 @@ def generate_financial_alerts(
     payment_severity = None
 
     if (
-        failure_rate >= 20
-        or failure_rate_change >= 10
+            failure_rate >= 20
+            or failure_rate_change >= 10
     ):
         payment_severity = "critical"
 
     elif (
-        failure_rate >= 10
-        or failure_rate_change >= 5
+            failure_rate >= 10
+            or failure_rate_change >= 5
     ):
         payment_severity = "warning"
 
@@ -194,14 +194,14 @@ def generate_financial_alerts(
         cashflow_severity = None
 
         if (
-            risk == "critical"
-            or risk_score >= 80
+                risk == "critical"
+                or risk_score >= 80
         ):
             cashflow_severity = "critical"
 
         elif (
-            risk == "warning"
-            or risk_score >= 50
+                risk == "warning"
+                or risk_score >= 50
         ):
             cashflow_severity = "warning"
 
@@ -281,8 +281,8 @@ def generate_financial_alerts(
     # -----------------------------------------------------
 
     if (
-        revenue_change_percent <= -10
-        and failure_rate >= 10
+            revenue_change_percent <= -10
+            and failure_rate >= 10
     ):
         supporting_signals.append(
             {
@@ -325,12 +325,12 @@ def generate_financial_alerts(
         ).lower()
 
         if (
-            anomaly_score >= 50
-            or anomaly_severity
-            in {
-                "warning",
-                "critical",
-            }
+                anomaly_score >= 50
+                or anomaly_severity
+                in {
+            "warning",
+            "critical",
+        }
         ):
             supporting_signals.append(
                 {
@@ -338,7 +338,7 @@ def generate_financial_alerts(
                     "severity": (
                         "critical"
                         if anomaly_score >= 80
-                        or anomaly_severity == "critical"
+                           or anomaly_severity == "critical"
                         else "warning"
                     ),
                     "title": "Financial anomaly detected",

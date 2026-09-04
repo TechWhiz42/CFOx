@@ -2,11 +2,11 @@ from app.financial_health import calculate_financial_health
 
 
 def base_comparison(
-    *,
-    revenue_change=0,
-    previous_revenue=1000,
-    failure_rate=2,
-    failure_change=0,
+        *,
+        revenue_change=0,
+        previous_revenue=1000,
+        failure_rate=2,
+        failure_change=0,
 ):
     return {
         "previous_period": {

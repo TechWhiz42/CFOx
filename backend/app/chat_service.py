@@ -2,7 +2,6 @@ import json
 
 import ollama
 
-
 MODEL = "gemma3:1b"
 
 
@@ -38,14 +37,14 @@ def route_question(question: str) -> str:
     ]
 
     if any(
-        keyword in text
-        for keyword in failed_transaction_keywords
+            keyword in text
+            for keyword in failed_transaction_keywords
     ) or (
-        "failed" in text
-        and ("payment" in text or "transaction" in text)
+            "failed" in text
+            and ("payment" in text or "transaction" in text)
     ) or (
-        "failure" in text
-        and ("payment" in text or "transaction" in text)
+            "failure" in text
+            and ("payment" in text or "transaction" in text)
     ):
         return "get_failed_transactions"
 
@@ -82,8 +81,8 @@ def route_question(question: str) -> str:
     ]
 
     if any(
-        keyword in text
-        for keyword in payment_keywords
+            keyword in text
+            for keyword in payment_keywords
     ):
         return "compare_payment_methods"
 
@@ -99,8 +98,8 @@ def route_question(question: str) -> str:
     ]
 
     if any(
-        keyword in text
-        for keyword in revenue_keywords
+            keyword in text
+            for keyword in revenue_keywords
     ):
         return "get_revenue_analysis"
 
@@ -116,8 +115,8 @@ def route_question(question: str) -> str:
     ]
 
     if any(
-        keyword in text
-        for keyword in cashflow_keywords
+            keyword in text
+            for keyword in cashflow_keywords
     ):
         return "get_cashflow_analysis"
 
@@ -125,8 +124,8 @@ def route_question(question: str) -> str:
 
 
 def stream_cfo_answer(
-    question: str,
-    tool_result=None,
+        question: str,
+        tool_result=None,
 ):
     """
     Stream the final CFO answer from Ollama.
@@ -185,8 +184,8 @@ Rules:
 
 
 def generate_cfo_answer(
-    question: str,
-    tool_result=None,
+        question: str,
+        tool_result=None,
 ) -> str:
     """
     Non-streaming version.
@@ -198,11 +197,9 @@ def generate_cfo_answer(
     answer = ""
 
     for token in stream_cfo_answer(
-        question,
-        tool_result,
+            question,
+            tool_result,
     ):
         answer += token
 
     return answer
-
-

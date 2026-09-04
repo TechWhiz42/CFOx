@@ -4,7 +4,6 @@ from app.auth import (
     hash_password,
     verify_password,
 )
-from app.models import User
 
 
 def test_password_hashing():
@@ -160,6 +159,7 @@ def test_me_returns_authenticated_user(client):
     data = response.json()
 
     assert data["email"] == "me@example.com"
+
 
 def test_financial_endpoint_requires_authentication(client):
     response = client.get(

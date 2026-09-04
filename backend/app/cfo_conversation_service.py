@@ -9,11 +9,11 @@ from app.analytics import (
     compare_periods,
     compare_payment_methods as analytics_compare_payment_methods,
 )
-from app.chat_service import route_question, generate_cfo_answer
 from app.cfo_reasoning import (
     build_reasoning_question,
     serialize_reasoning_context,
 )
+from app.chat_service import route_question, generate_cfo_answer
 from app.models import ChatMessage, Conversation
 from app.tools import (
     get_cashflow_analysis,
@@ -23,9 +23,9 @@ from app.tools import (
 
 
 def get_owned_conversation(
-    db: Session,
-    conversation_id: int,
-    user_id: int,
+        db: Session,
+        conversation_id: int,
+        user_id: int,
 ) -> Conversation | None:
     return (
         db.query(Conversation)
@@ -38,9 +38,9 @@ def get_owned_conversation(
 
 
 def get_conversation_history(
-    db: Session,
-    conversation_id: int,
-    limit: int = 20,
+        db: Session,
+        conversation_id: int,
+        limit: int = 20,
 ) -> list[ChatMessage]:
     limit = max(1, min(limit, 100))
 
@@ -61,9 +61,9 @@ def get_conversation_history(
 
 
 def _add_cross_metric_evidence(
-    db: Session,
-    user_id: int,
-    result: dict,
+        db: Session,
+        user_id: int,
+        result: dict,
 ) -> dict:
     """
     Add deterministic cross-metric evidence without changing the primary
@@ -100,9 +100,9 @@ def _add_cross_metric_evidence(
 
 
 def build_tool_result(
-    db: Session,
-    question: str,
-    user_id: int,
+        db: Session,
+        question: str,
+        user_id: int,
 ) -> tuple[str, dict | None]:
     """Execute deterministic CFO tools against the authenticated user's data."""
 
@@ -176,7 +176,7 @@ def build_tool_result(
 
 
 def build_history_context(
-    messages: list[ChatMessage],
+        messages: list[ChatMessage],
 ) -> str:
     """Compatibility helper for callers that need readable history."""
 
@@ -193,10 +193,10 @@ def build_history_context(
 
 
 def _build_contextual_question(
-    question: str,
-    history: list[ChatMessage],
-    tool_name: str,
-    tool_result,
+        question: str,
+        history: list[ChatMessage],
+        tool_name: str,
+        tool_result,
 ) -> str:
     reasoning_question = build_reasoning_question(
         question,
@@ -216,10 +216,10 @@ def _build_contextual_question(
 
 
 def generate_stateful_cfo_answer(
-    db: Session,
-    question: str,
-    history: list[ChatMessage],
-    user_id: int,
+        db: Session,
+        question: str,
+        history: list[ChatMessage],
+        user_id: int,
 ) -> tuple[str, str]:
     """Generate a context-aware answer using verified user-scoped data."""
 
@@ -250,10 +250,10 @@ def generate_stateful_cfo_answer(
 
 
 def prepare_cfo_exchange(
-    db: Session,
-    conversation_id: int,
-    question: str,
-    user_id: int,
+        db: Session,
+        conversation_id: int,
+        question: str,
+        user_id: int,
 ):
     """
     Prepare a persistent streaming exchange.
@@ -303,10 +303,10 @@ def prepare_cfo_exchange(
 
 
 def persist_cfo_exchange(
-    db: Session,
-    conversation: Conversation,
-    question: str,
-    answer: str,
+        db: Session,
+        conversation: Conversation,
+        question: str,
+        answer: str,
 ) -> tuple[ChatMessage, ChatMessage]:
     """Persist the user question and assistant answer atomically."""
 

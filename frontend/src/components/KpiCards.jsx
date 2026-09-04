@@ -1,9 +1,9 @@
-import { MetricCard } from "./Metrics";
+import {MetricCard} from "./Metrics";
 
 function KpiCards({
-    currentPeriod,
-    changes,
-}) {
+                      currentPeriod,
+                      changes,
+                  }) {
     return (
         <section>
             <MetricCard

@@ -13,7 +13,6 @@ from app.analytics import (
 )
 from app.models import Transaction
 
-
 INVESTIGATION_TYPES = (
     "revenue",
     "failure",
@@ -31,38 +30,38 @@ def classify_investigation(question: str) -> str:
         return "refund"
 
     if any(
-        word in text
-        for word in (
-            "fail",
-            "failed",
-            "failure",
-            "declined",
-            "decline",
-        )
+            word in text
+            for word in (
+                    "fail",
+                    "failed",
+                    "failure",
+                    "declined",
+                    "decline",
+            )
     ):
         return "failure"
 
     if any(
-        word in text
-        for word in (
-            "customer",
-            "customers",
-            "client",
-            "clients",
-        )
+            word in text
+            for word in (
+                    "customer",
+                    "customers",
+                    "client",
+                    "clients",
+            )
     ):
         return "customer"
 
     if any(
-        word in text
-        for word in (
-            "payment method",
-            "payment methods",
-            "upi",
-            "card",
-            "netbanking",
-            "net banking",
-        )
+            word in text
+            for word in (
+                    "payment method",
+                    "payment methods",
+                    "upi",
+                    "card",
+                    "netbanking",
+                    "net banking",
+            )
     ):
         return "payment_method"
 
@@ -85,10 +84,10 @@ def _period_bounds(days: int) -> tuple[datetime, datetime]:
 
 
 def build_investigation_evidence(
-    db: Session,
-    question: str,
-    user_id: int,
-    days: int = 7,
+        db: Session,
+        question: str,
+        user_id: int,
+        days: int = 7,
 ) -> dict:
     """Collect verified, user-scoped database facts for an investigation."""
     investigation_type = classify_investigation(question)
@@ -223,10 +222,10 @@ def build_investigation_evidence(
 
 
 def investigate_financial_question(
-    db: Session,
-    question: str,
-    user_id: int,
-    days: int = 7,
+        db: Session,
+        question: str,
+        user_id: int,
+        days: int = 7,
 ) -> dict:
     """Investigate a financial question using verified DB evidence."""
     evidence = build_investigation_evidence(

@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from app.database import SessionLocal
 from app.models import Transaction
 
-
 PAYMENT_METHODS = ["upi", "card", "netbanking"]
 
 
@@ -33,11 +32,11 @@ def seed_transactions(count=2000):
             days_ago = random.randint(0, 89)
 
             created_at = (
-                datetime.utcnow()
-                - timedelta(
-                    days=days_ago,
-                    seconds=random.randint(0, 86400)
-                )
+                    datetime.utcnow()
+                    - timedelta(
+                days=days_ago,
+                seconds=random.randint(0, 86400)
+            )
             )
 
             payment_method = random.choice(PAYMENT_METHODS)

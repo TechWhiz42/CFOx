@@ -22,9 +22,9 @@ export function isCurrentRequest(
 ) {
     return (
         requestControllers.current[name] ===
-            controller &&
+        controller &&
         requestGeneration.current ===
-            generation
+        generation
     );
 }
 

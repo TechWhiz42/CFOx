@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { createTransaction, getTransactions } from "../api/transactions";
+import {useEffect, useState} from "react";
+import {createTransaction, getTransactions} from "../api/transactions";
 
 const PAGE_SIZE = 20;
 
@@ -61,7 +61,7 @@ function statusClass(status) {
     ).toLowerCase()}`;
 }
 
-function TransactionManager({ authFetch, onDataChanged }) {
+function TransactionManager({authFetch, onDataChanged}) {
     const [transactions, setTransactions] = useState([]);
     const [offset, setOffset] = useState(0);
     const [hasNext, setHasNext] = useState(false);
@@ -311,9 +311,9 @@ function TransactionManager({ authFetch, onDataChanged }) {
             <div className="cfox-transaction-table-wrap">
                 {loading ? (
                     <div className="cfox-transaction-state">
-                        <div className="cfox-table-skeleton" />
-                        <div className="cfox-table-skeleton" />
-                        <div className="cfox-table-skeleton" />
+                        <div className="cfox-table-skeleton"/>
+                        <div className="cfox-table-skeleton"/>
+                        <div className="cfox-table-skeleton"/>
                     </div>
                 ) : transactions.length === 0 ? (
                     <div className="cfox-transaction-empty">
@@ -333,42 +333,42 @@ function TransactionManager({ authFetch, onDataChanged }) {
                 ) : (
                     <table className="cfox-transaction-table">
                         <thead>
-                            <tr>
-                                <th>Payment</th>
-                                <th>Customer</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Method</th>
-                                <th>Created</th>
-                            </tr>
+                        <tr>
+                            <th>Payment</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Method</th>
+                            <th>Created</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            {transactions.map((transaction) => (
-                                <tr key={transaction.id || transaction.razorpay_payment_id}>
-                                    <td>
-                                        <strong>{transaction.razorpay_payment_id}</strong>
-                                        <span>#{transaction.id}</span>
-                                    </td>
-                                    <td>{transaction.customer_id || "—"}</td>
-                                    <td className="cfox-amount-cell">
-                                        {formatAmount(
-                                            transaction.amount,
-                                            transaction.currency || "INR"
-                                        )}
-                                    </td>
-                                    <td>
+                        {transactions.map((transaction) => (
+                            <tr key={transaction.id || transaction.razorpay_payment_id}>
+                                <td>
+                                    <strong>{transaction.razorpay_payment_id}</strong>
+                                    <span>#{transaction.id}</span>
+                                </td>
+                                <td>{transaction.customer_id || "—"}</td>
+                                <td className="cfox-amount-cell">
+                                    {formatAmount(
+                                        transaction.amount,
+                                        transaction.currency || "INR"
+                                    )}
+                                </td>
+                                <td>
                                         <span className={statusClass(transaction.status)}>
                                             {transaction.status || "unknown"}
                                         </span>
-                                    </td>
-                                    <td>
-                                        {transaction.payment_method
-                                            ? transaction.payment_method.toUpperCase()
-                                            : "—"}
-                                    </td>
-                                    <td>{formatDate(transaction.created_at)}</td>
-                                </tr>
-                            ))}
+                                </td>
+                                <td>
+                                    {transaction.payment_method
+                                        ? transaction.payment_method.toUpperCase()
+                                        : "—"}
+                                </td>
+                                <td>{formatDate(transaction.created_at)}</td>
+                            </tr>
+                        ))}
                         </tbody>
                     </table>
                 )}

@@ -1,10 +1,10 @@
 function SeverityBadge({
-    severity,
-}) {
+                           severity,
+                       }) {
     const normalized =
         String(
             severity ||
-                "normal"
+            "normal"
         ).toLowerCase();
 
     let background =
@@ -15,7 +15,7 @@ function SeverityBadge({
 
     if (
         normalized ===
-            "warning" ||
+        "warning" ||
         normalized === "high"
     ) {
         background =

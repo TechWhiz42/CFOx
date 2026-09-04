@@ -1,7 +1,7 @@
 function ErrorScreen({
-    error,
-    onRetry,
-}) {
+                         error,
+                         onRetry,
+                     }) {
     return (
         <div
             style={{

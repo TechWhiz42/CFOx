@@ -2,17 +2,17 @@ from app.financial_actions import generate_financial_actions
 
 
 def make_health(
-    revenue=30,
-    payment_reliability=30,
-    cashflow=25,
-    anomaly=15,
+        revenue=30,
+        payment_reliability=30,
+        cashflow=25,
+        anomaly=15,
 ):
     return {
         "score": (
-            revenue
-            + payment_reliability
-            + cashflow
-            + anomaly
+                revenue
+                + payment_reliability
+                + cashflow
+                + anomaly
         ),
         "status": "healthy",
         "components": {
@@ -37,11 +37,11 @@ def make_health(
 
 
 def make_supporting_data(
-    revenue_change_percentage=0,
-    failure_rate=0,
-    cashflow_risk_score=0,
-    cashflow_risk="low",
-    anomaly_score=0,
+        revenue_change_percentage=0,
+        failure_rate=0,
+        cashflow_risk_score=0,
+        cashflow_risk="low",
+        anomaly_score=0,
 ):
     return {
         "comparison": {
@@ -54,9 +54,9 @@ def make_supporting_data(
             },
             "changes": {
                 "revenue_change": (
-                    100000
-                    * revenue_change_percentage
-                    / 100
+                        100000
+                        * revenue_change_percentage
+                        / 100
                 ),
                 "revenue_change_percentage": (
                     revenue_change_percentage

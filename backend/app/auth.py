@@ -10,7 +10,6 @@ from app.config import settings
 from app.database import get_db
 from app.models import User
 
-
 password_hash = PasswordHash.recommended()
 
 oauth2_scheme = OAuth2PasswordBearer(
@@ -35,8 +34,8 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(
-    plain_password: str,
-    hashed_password: str,
+        plain_password: str,
+        hashed_password: str,
 ) -> bool:
     """
     Verify a plaintext password against its Argon2 hash.
@@ -103,8 +102,8 @@ def decode_access_token(token: str) -> int:
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db),
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db),
 ) -> User:
     """
     Resolve the authenticated user from the JWT.

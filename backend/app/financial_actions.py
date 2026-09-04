@@ -1,8 +1,6 @@
-
 from __future__ import annotations
 
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Thresholds
@@ -13,7 +11,6 @@ REVENUE_MAX = 30
 PAYMENT_RELIABILITY_MAX = 30
 CASHFLOW_MAX = 25
 ANOMALY_MAX = 15
-
 
 # Component-score thresholds.
 #
@@ -29,7 +26,6 @@ CASHFLOW_WARNING_THRESHOLD = 18
 
 ANOMALY_CRITICAL_THRESHOLD = 6
 ANOMALY_WARNING_THRESHOLD = 11
-
 
 # Metric thresholds used as supporting evidence.
 REVENUE_DECLINE_WARNING_PERCENT = -10.0
@@ -65,8 +61,8 @@ def _round(value: Any, digits: int = 2) -> float:
 
 
 def _component_score(
-    components: dict[str, Any],
-    name: str,
+        components: dict[str, Any],
+        name: str,
 ) -> float:
     """
     Extract a component score from the Financial Health response.
@@ -102,17 +98,17 @@ def _priority_rank(priority: str) -> int:
 
 
 def _add_action(
-    actions: list[dict[str, Any]],
-    *,
-    action_id: str,
-    priority: str,
-    severity: str,
-    title: str,
-    description: str,
-    metric: str,
-    value: Any,
-    action: str,
-    evidence: dict[str, Any],
+        actions: list[dict[str, Any]],
+        *,
+        action_id: str,
+        priority: str,
+        severity: str,
+        title: str,
+        description: str,
+        metric: str,
+        value: Any,
+        action: str,
+        evidence: dict[str, Any],
 ) -> None:
     """
     Add one normalized action to the action list.
@@ -139,9 +135,9 @@ def _add_action(
 # ---------------------------------------------------------------------------
 
 def _generate_revenue_action(
-    actions: list[dict[str, Any]],
-    health_components: dict[str, Any],
-    supporting_data: dict[str, Any],
+        actions: list[dict[str, Any]],
+        health_components: dict[str, Any],
+        supporting_data: dict[str, Any],
 ) -> None:
     """Generate an action when revenue health is weak."""
 
@@ -161,22 +157,22 @@ def _generate_revenue_action(
 
         if previous_revenue != 0:
             revenue_change_percentage = (
-                (current_revenue - previous_revenue)
-                / previous_revenue
-            ) * 100
+                                                (current_revenue - previous_revenue)
+                                                / previous_revenue
+                                        ) * 100
 
     revenue_change_percentage = _to_float(revenue_change_percentage)
 
     # A healthy component should not create an action.
     if (
-        score > REVENUE_WARNING_THRESHOLD
-        and revenue_change_percentage > REVENUE_DECLINE_WARNING_PERCENT
+            score > REVENUE_WARNING_THRESHOLD
+            and revenue_change_percentage > REVENUE_DECLINE_WARNING_PERCENT
     ):
         return
 
     is_critical = (
-        score <= REVENUE_CRITICAL_THRESHOLD
-        or revenue_change_percentage <= REVENUE_DECLINE_CRITICAL_PERCENT
+            score <= REVENUE_CRITICAL_THRESHOLD
+            or revenue_change_percentage <= REVENUE_DECLINE_CRITICAL_PERCENT
     )
 
     if is_critical:
@@ -229,9 +225,9 @@ def _generate_revenue_action(
 # ---------------------------------------------------------------------------
 
 def _generate_payment_action(
-    actions: list[dict[str, Any]],
-    health_components: dict[str, Any],
-    supporting_data: dict[str, Any],
+        actions: list[dict[str, Any]],
+        health_components: dict[str, Any],
+        supporting_data: dict[str, Any],
 ) -> None:
     """Generate an action when payment reliability is weak."""
 
@@ -253,14 +249,14 @@ def _generate_payment_action(
         failure_rate_value *= 100
 
     if (
-        score > PAYMENT_RELIABILITY_WARNING_THRESHOLD
-        and failure_rate_value < PAYMENT_FAILURE_WARNING_PERCENT
+            score > PAYMENT_RELIABILITY_WARNING_THRESHOLD
+            and failure_rate_value < PAYMENT_FAILURE_WARNING_PERCENT
     ):
         return
 
     is_critical = (
-        score <= PAYMENT_RELIABILITY_CRITICAL_THRESHOLD
-        or failure_rate_value >= PAYMENT_FAILURE_CRITICAL_PERCENT
+            score <= PAYMENT_RELIABILITY_CRITICAL_THRESHOLD
+            or failure_rate_value >= PAYMENT_FAILURE_CRITICAL_PERCENT
     )
 
     if is_critical:
@@ -304,9 +300,9 @@ def _generate_payment_action(
 # ---------------------------------------------------------------------------
 
 def _generate_cashflow_action(
-    actions: list[dict[str, Any]],
-    health_components: dict[str, Any],
-    supporting_data: dict[str, Any],
+        actions: list[dict[str, Any]],
+        health_components: dict[str, Any],
+        supporting_data: dict[str, Any],
 ) -> None:
     """Generate an action when cash-flow risk is elevated."""
 
@@ -325,22 +321,22 @@ def _generate_cashflow_action(
     # If the health engine says cash-flow is healthy and the supporting
     # risk score is unavailable, there is nothing actionable to emit.
     if (
-        score > CASHFLOW_WARNING_THRESHOLD
-        and risk_score is None
-        and risk not in {"high", "critical"}
+            score > CASHFLOW_WARNING_THRESHOLD
+            and risk_score is None
+            and risk not in {"high", "critical"}
     ):
         return
 
     is_critical = (
-        score <= CASHFLOW_CRITICAL_THRESHOLD
-        or risk_score_value >= CASHFLOW_RISK_CRITICAL_SCORE
-        or risk in {"critical", "very_high"}
+            score <= CASHFLOW_CRITICAL_THRESHOLD
+            or risk_score_value >= CASHFLOW_RISK_CRITICAL_SCORE
+            or risk in {"critical", "very_high"}
     )
 
     is_warning = (
-        score <= CASHFLOW_WARNING_THRESHOLD
-        or risk_score_value >= CASHFLOW_RISK_WARNING_SCORE
-        or risk in {"high", "elevated", "medium_high"}
+            score <= CASHFLOW_WARNING_THRESHOLD
+            or risk_score_value >= CASHFLOW_RISK_WARNING_SCORE
+            or risk in {"high", "elevated", "medium_high"}
     )
 
     if not is_warning and not is_critical:
@@ -388,9 +384,9 @@ def _generate_cashflow_action(
 # ---------------------------------------------------------------------------
 
 def _generate_anomaly_action(
-    actions: list[dict[str, Any]],
-    health_components: dict[str, Any],
-    supporting_data: dict[str, Any],
+        actions: list[dict[str, Any]],
+        health_components: dict[str, Any],
+        supporting_data: dict[str, Any],
 ) -> None:
     """Generate an action when transaction anomaly risk is elevated."""
 
@@ -407,14 +403,14 @@ def _generate_anomaly_action(
     anomaly_count = anomaly.get("anomaly_count")
 
     if (
-        score > ANOMALY_WARNING_THRESHOLD
-        and anomaly_score_value < ANOMALY_WARNING_SCORE
+            score > ANOMALY_WARNING_THRESHOLD
+            and anomaly_score_value < ANOMALY_WARNING_SCORE
     ):
         return
 
     is_critical = (
-        score <= ANOMALY_CRITICAL_THRESHOLD
-        or anomaly_score_value >= ANOMALY_CRITICAL_SCORE
+            score <= ANOMALY_CRITICAL_THRESHOLD
+            or anomaly_score_value >= ANOMALY_CRITICAL_SCORE
     )
 
     if is_critical:
@@ -459,8 +455,8 @@ def _generate_anomaly_action(
 # ---------------------------------------------------------------------------
 
 def generate_financial_actions(
-    health: dict[str, Any],
-    supporting_data: dict[str, Any],
+        health: dict[str, Any],
+        supporting_data: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """
     Generate deterministic, prioritized financial actions.

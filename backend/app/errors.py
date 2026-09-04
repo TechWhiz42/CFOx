@@ -5,7 +5,6 @@ from fastapi.responses import JSONResponse
 
 from app.reliability import CFOAIServiceError
 
-
 logger = logging.getLogger("cfox")
 
 
@@ -18,8 +17,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(CFOAIServiceError)
     async def ai_service_error_handler(
-        request: Request,
-        exc: CFOAIServiceError,
+            request: Request,
+            exc: CFOAIServiceError,
     ):
         request_id = _request_id(request)
 
@@ -42,8 +41,8 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(
-        request: Request,
-        exc: Exception,
+            request: Request,
+            exc: Exception,
     ):
         request_id = _request_id(request)
 

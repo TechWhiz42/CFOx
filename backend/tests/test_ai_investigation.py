@@ -95,9 +95,9 @@ def test_investigation_evidence_is_user_scoped(db):
 
 
 def test_investigation_route_uses_verified_evidence(
-    monkeypatch,
-    client,
-    db,
+        monkeypatch,
+        client,
+        db,
 ):
     user = create_test_user(
         db,

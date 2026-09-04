@@ -16,7 +16,6 @@ from app.schemas import (
     UserSignup,
 )
 
-
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"],
@@ -29,8 +28,8 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def register(
-    request: UserSignup,
-    db: Session = Depends(get_db),
+        request: UserSignup,
+        db: Session = Depends(get_db),
 ):
     email = request.email.strip().lower()
 
@@ -66,8 +65,8 @@ def register(
     response_model=LoginResponse,
 )
 def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db),
+        form_data: OAuth2PasswordRequestForm = Depends(),
+        db: Session = Depends(get_db),
 ):
     email = form_data.username.strip().lower()
 
@@ -78,11 +77,11 @@ def login(
     )
 
     if (
-        user is None
-        or not verify_password(
-            form_data.password,
-            user.hashed_password,
-        )
+            user is None
+            or not verify_password(
+        form_data.password,
+        user.hashed_password,
+    )
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,8 +112,8 @@ def login(
     response_model=UserResponse,
 )
 def get_me(
-    current_user: User = Depends(
-        get_current_user
-    ),
+        current_user: User = Depends(
+            get_current_user
+        ),
 ):
     return current_user

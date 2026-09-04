@@ -35,7 +35,7 @@ async function requestJson(
     if (!response.ok) {
         throw new Error(
             data?.detail ||
-                `Request failed: ${response.status}`
+            `Request failed: ${response.status}`
         );
     }
 
@@ -162,7 +162,7 @@ export async function streamConversationMessage(
 
     try {
         while (true) {
-            const { value, done } =
+            const {value, done} =
                 await reader.read();
 
             if (done) {
@@ -171,7 +171,7 @@ export async function streamConversationMessage(
 
             buffer += decoder.decode(
                 value,
-                { stream: true }
+                {stream: true}
             );
 
             const lines = buffer.split("\n");
@@ -195,22 +195,16 @@ export async function streamConversationMessage(
 
                 if (event.type === "metadata") {
                     onMetadata?.(event);
-                }
-
-                else if (event.type === "token") {
+                } else if (event.type === "token") {
                     onToken?.(
                         event.content || ""
                     );
-                }
-
-                else if (event.type === "done") {
+                } else if (event.type === "done") {
                     onDone?.(event);
-                }
-
-                else if (event.type === "error") {
+                } else if (event.type === "error") {
                     const error = new Error(
                         event.detail ||
-                            "CFO streaming failed."
+                        "CFO streaming failed."
                     );
 
                     onError?.(error);
@@ -228,22 +222,16 @@ export async function streamConversationMessage(
 
                 if (event.type === "metadata") {
                     onMetadata?.(event);
-                }
-
-                else if (event.type === "token") {
+                } else if (event.type === "token") {
                     onToken?.(
                         event.content || ""
                     );
-                }
-
-                else if (event.type === "done") {
+                } else if (event.type === "done") {
                     onDone?.(event);
-                }
-
-                else if (event.type === "error") {
+                } else if (event.type === "error") {
                     const error = new Error(
                         event.detail ||
-                            "CFO streaming failed."
+                        "CFO streaming failed."
                     );
 
                     onError?.(error);
@@ -254,7 +242,7 @@ export async function streamConversationMessage(
                 if (
                     error instanceof Error &&
                     error.message !==
-                        "Unexpected end of JSON input"
+                    "Unexpected end of JSON input"
                 ) {
                     throw error;
                 }
@@ -265,5 +253,5 @@ export async function streamConversationMessage(
     }
 }
 
-export { API };
+export {API};
 

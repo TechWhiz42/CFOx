@@ -1,8 +1,8 @@
 function ImpactMetric({
-    label,
-    value,
-    accent,
-}) {
+                          label,
+                          value,
+                          accent,
+                      }) {
     return (
         <div
             style={{
@@ -42,12 +42,12 @@ function ImpactMetric({
 }
 
 function FinancialImpact({
-    dashboard,
-    alerts,
-    paymentMethod,
-    onInvestigate,
-    chatLoading,
-}) {
+                             dashboard,
+                             alerts,
+                             paymentMethod,
+                             onInvestigate,
+                             chatLoading,
+                         }) {
     const analysis =
         dashboard?.analysis || {};
 
@@ -73,12 +73,12 @@ function FinancialImpact({
 
     const revenueChange = Number(
         changes.revenue_change_percentage ??
-            changes.revenue_change_percent ??
-            (previousRevenue > 0
-                ? ((currentRevenue - previousRevenue) /
-                      previousRevenue) *
-                  100
-                : 0)
+        changes.revenue_change_percent ??
+        (previousRevenue > 0
+            ? ((currentRevenue - previousRevenue) /
+                previousRevenue) *
+            100
+            : 0)
     );
 
     const failureRate = Number(
@@ -87,14 +87,14 @@ function FinancialImpact({
 
     const failureRateChange = Number(
         changes.failure_rate_change_percentage_points ??
-            changes.failure_rate_change ??
-            0
+        changes.failure_rate_change ??
+        0
     );
 
     const riskScore = Number(
         cashflow.risk_score ??
-            changes.risk_score ??
-            0
+        changes.risk_score ??
+        0
     );
 
     const hasData =
@@ -155,7 +155,7 @@ function FinancialImpact({
                             gap: "10px",
                         }}
                     >
-                        <h2 style={{ margin: 0 }}>
+                        <h2 style={{margin: 0}}>
                             Financial Impact
                         </h2>
 
@@ -240,8 +240,8 @@ function FinancialImpact({
                         failureRate >= 20
                             ? "#fb7185"
                             : failureRate >= 10
-                              ? "#fbbf24"
-                              : "#34d399"
+                                ? "#fbbf24"
+                                : "#34d399"
                     }
                 />
             </div>
@@ -276,8 +276,8 @@ function FinancialImpact({
                         riskScore >= 80
                             ? "#fb7185"
                             : riskScore >= 50
-                              ? "#fbbf24"
-                              : "#34d399"
+                                ? "#fbbf24"
+                                : "#34d399"
                     }
                 />
 
@@ -329,8 +329,8 @@ function FinancialImpact({
                             <>
                                 {" "}
                                 ({failureRateChange > 0
-                                    ? "+"
-                                    : ""}
+                                ? "+"
+                                : ""}
                                 {failureRateChange.toFixed(
                                     2
                                 )} pp).

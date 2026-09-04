@@ -123,6 +123,7 @@ class Transaction(Base):
         ),
     )
 
+
 class RazorpayWebhookEvent(Base):
     __tablename__ = "razorpay_webhook_events"
 
@@ -130,6 +131,7 @@ class RazorpayWebhookEvent(Base):
     event_id = Column(String(255), unique=True, nullable=False, index=True)
     event_name = Column(String(100), nullable=False)
     received_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
 
 class Conversation(Base):
     __tablename__ = "conversations"

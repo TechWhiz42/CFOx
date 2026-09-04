@@ -11,7 +11,7 @@ async function request(path, options = {}, authFetch) {
 }
 
 export async function getTransactions(
-    { limit = 20, offset = 0, signal } = {},
+    {limit = 20, offset = 0, signal} = {},
     authFetch
 ) {
     const query = new URLSearchParams({
@@ -21,7 +21,7 @@ export async function getTransactions(
 
     return request(
         `/transactions?${query.toString()}`,
-        { signal },
+        {signal},
         authFetch
     );
 }
@@ -43,4 +43,4 @@ export async function createTransaction(
     );
 }
 
-export { API };
+export {API};

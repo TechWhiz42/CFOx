@@ -1,7 +1,7 @@
 def calculate_anomaly_score(
-    failure_rate_change: float,
-    failure_rate_multiplier: float | None,
-    revenue_change: float
+        failure_rate_change: float,
+        failure_rate_multiplier: float | None,
+        revenue_change: float
 ):
     score = 0
 

@@ -1,10 +1,10 @@
 import AIInsight from "./AIInsight";
 
 function AIInsightSection({
-    aiLoading,
-    aiInsight,
-    loadAIInsight,
-}) {
+                              aiLoading,
+                              aiInsight,
+                              loadAIInsight,
+                          }) {
     return (
         <section
             style={{
@@ -42,8 +42,8 @@ function AIInsightSection({
                     {aiLoading
                         ? "Analyzing..."
                         : aiInsight
-                          ? "Refresh Insight"
-                          : "Generate AI Insight"}
+                            ? "Refresh Insight"
+                            : "Generate AI Insight"}
                 </button>
             </div>
 

@@ -9,9 +9,9 @@ from app.forecasting import forecast_revenue
 
 
 def get_dashboard_analysis(
-    db: Session,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Build the complete dashboard analytics payload.
@@ -55,9 +55,9 @@ def get_dashboard_analysis(
 
 
 def get_alert_analysis(
-    db: Session,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Build the analytics payload required by the
@@ -97,9 +97,9 @@ def get_alert_analysis(
 
 
 def get_ai_insight_data(
-    db: Session,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Build the financial-data payload consumed by the
@@ -121,9 +121,9 @@ def get_ai_insight_data(
 
 
 def get_anomaly_analysis(
-    db: Session,
-    payment_method: str | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        user_id: int | None = None,
 ) -> dict:
     """
     Build the deterministic anomaly-analysis payload.

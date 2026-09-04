@@ -54,11 +54,11 @@ def _forecast_change_percent(forecast: dict) -> float | None:
 
 
 def calculate_financial_health(
-    *,
-    comparison: dict,
-    anomaly: dict,
-    cashflow: dict | None = None,
-    forecast: dict | None = None,
+        *,
+        comparison: dict,
+        anomaly: dict,
+        cashflow: dict | None = None,
+        forecast: dict | None = None,
 ) -> dict:
     """
     Calculate a deterministic 0-100 financial health score.

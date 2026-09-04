@@ -3,20 +3,17 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.config import settings
 
-
 if not settings.DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL environment variable is not configured."
     )
 
-
 engine_kwargs = {
     "pool_pre_ping": True,
 }
 
-
 if settings.DATABASE_URL.startswith(
-    ("postgresql://", "postgres://")
+        ("postgresql://", "postgres://")
 ):
     engine_kwargs.update(
         {
@@ -27,19 +24,16 @@ if settings.DATABASE_URL.startswith(
         }
     )
 
-
 engine = create_engine(
     settings.DATABASE_URL,
     **engine_kwargs,
 )
-
 
 SessionLocal = sessionmaker(
     bind=engine,
     autocommit=False,
     autoflush=False,
 )
-
 
 Base = declarative_base()
 

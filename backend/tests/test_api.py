@@ -1,13 +1,13 @@
-import pytest
-
-from fastapi.testclient import TestClient
-
-from app.main import app
-from app.database import get_db
-from app.auth import create_access_token, hash_password
-from app.models import User, Transaction
 from datetime import datetime, timedelta
 from decimal import Decimal
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.auth import create_access_token, hash_password
+from app.database import get_db
+from app.main import app
+from app.models import User, Transaction
 
 
 @pytest.fixture
@@ -187,6 +187,7 @@ def test_empty_cfo_question(client):
 
     assert data["detail"] == "Question cannot be empty."
 
+
 def test_unhandled_exception_returns_safe_500(client, monkeypatch):
     from app import routes
 
@@ -216,6 +217,7 @@ def test_unhandled_exception_returns_safe_500(client, monkeypatch):
     )
 
     assert "THIS SHOULD NOT BE EXPOSED" not in response.text
+
 
 def test_transactions_are_isolated_between_users(client, db):
     """An authenticated user must only see their own financial data."""
@@ -418,6 +420,7 @@ def test_list_transactions_is_user_scoped_and_paginated(client, db):
     assert data[0]["razorpay_payment_id"] == "phase6_list_owner_002"
     assert all(item["user_id"] == owner.id for item in data)
 
+
 # =========================================================
 # PHASE 9 — ADVANCED FINANCIAL ANALYTICS
 # =========================================================
@@ -426,9 +429,14 @@ def test_advanced_kpis_endpoint(client, db):
     owner = db.query(User).filter(User.email == "api-test@example.com").one()
     now = datetime.utcnow()
     db.add_all([
-        Transaction(razorpay_payment_id="phase9_kpi_success", amount=Decimal("1000.00"), currency="INR", status="success", payment_method="upi", customer_id="c1", user_id=owner.id, created_at=now - timedelta(days=1)),
-        Transaction(razorpay_payment_id="phase9_kpi_failed", amount=Decimal("500.00"), currency="INR", status="failed", payment_method="upi", customer_id="c2", user_id=owner.id, created_at=now - timedelta(days=1)),
-        Transaction(razorpay_payment_id="phase9_kpi_refund", amount=Decimal("200.00"), currency="INR", status="refunded", payment_method="upi", customer_id="c1", user_id=owner.id, created_at=now - timedelta(days=1)),
+        Transaction(razorpay_payment_id="phase9_kpi_success", amount=Decimal("1000.00"), currency="INR",
+                    status="success", payment_method="upi", customer_id="c1", user_id=owner.id,
+                    created_at=now - timedelta(days=1)),
+        Transaction(razorpay_payment_id="phase9_kpi_failed", amount=Decimal("500.00"), currency="INR", status="failed",
+                    payment_method="upi", customer_id="c2", user_id=owner.id, created_at=now - timedelta(days=1)),
+        Transaction(razorpay_payment_id="phase9_kpi_refund", amount=Decimal("200.00"), currency="INR",
+                    status="refunded", payment_method="upi", customer_id="c1", user_id=owner.id,
+                    created_at=now - timedelta(days=1)),
     ])
     db.commit()
 
@@ -469,8 +477,12 @@ def test_customer_concentration_is_user_scoped(client, db):
 
     now = datetime.utcnow()
     db.add_all([
-        Transaction(razorpay_payment_id="phase9_cust_owner", amount=Decimal("1000.00"), currency="INR", status="success", payment_method="upi", customer_id="owner-customer", user_id=owner.id, created_at=now - timedelta(days=1)),
-        Transaction(razorpay_payment_id="phase9_cust_other", amount=Decimal("9000.00"), currency="INR", status="success", payment_method="upi", customer_id="other-customer", user_id=other.id, created_at=now - timedelta(days=1)),
+        Transaction(razorpay_payment_id="phase9_cust_owner", amount=Decimal("1000.00"), currency="INR",
+                    status="success", payment_method="upi", customer_id="owner-customer", user_id=owner.id,
+                    created_at=now - timedelta(days=1)),
+        Transaction(razorpay_payment_id="phase9_cust_other", amount=Decimal("9000.00"), currency="INR",
+                    status="success", payment_method="upi", customer_id="other-customer", user_id=other.id,
+                    created_at=now - timedelta(days=1)),
     ])
     db.commit()
 

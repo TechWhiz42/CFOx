@@ -1,6 +1,6 @@
 function AIInsight({
-    insight,
-}) {
+                       insight,
+                   }) {
     if (
         typeof insight ===
         "string"
@@ -72,11 +72,11 @@ function AIInsight({
             )}
 
             {Array.isArray(
-                insight.evidence
-            ) &&
+                    insight.evidence
+                ) &&
                 insight.evidence
                     .length >
-                    0 && (
+                0 && (
                     <div
                         style={{
                             marginBottom:
@@ -133,12 +133,12 @@ function AIInsight({
             )}
 
             {Array.isArray(
-                insight.recommendations
-            ) &&
+                    insight.recommendations
+                ) &&
                 insight
                     .recommendations
                     .length >
-                    0 && (
+                0 && (
                     <div>
                         <strong>
                             Recommendations

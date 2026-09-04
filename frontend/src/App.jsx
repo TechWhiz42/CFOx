@@ -3,26 +3,15 @@ import {useAuth} from "./AuthContext";
 import Login from "./Login";
 import Register from "./Register";
 import {
-    listConversations,
     createConversation,
-    getConversation,
-    streamConversationMessage,
     deleteConversation,
+    getConversation,
+    listConversations,
+    streamConversationMessage,
 } from "./api/conversations";
-
-const API =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000";
 import {buildVerifiedEvidence, getPaymentMethodLabel} from "./utils/investigation";
-import {
-    beginRequest,
-    isCurrentRequest,
-    isSameRequest,
-} from "./utils/request";
-import {
-    QUICK_QUESTIONS,
-    TOOL_LABELS,
-} from "./utils/constants";
+import {beginRequest, isCurrentRequest, isSameRequest,} from "./utils/request";
+import {QUICK_QUESTIONS, TOOL_LABELS,} from "./utils/constants";
 import {parseApiResponse} from "./utils/apiResponse";
 
 import CFOChat from "./components/CFOChat";
@@ -40,6 +29,10 @@ import TransactionManager from "./components/TransactionManager";
 import LoadingScreen from "./components/LoadingScreen";
 import ErrorScreen from "./components/ErrorScreen";
 import "./styles/cfox-razor-theme.css";
+
+const API =
+    import.meta.env.VITE_API_URL ||
+    "http://127.0.0.1:8000";
 
 const AUTH_STYLES = `
     .cfox-auth-page {

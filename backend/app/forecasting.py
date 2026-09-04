@@ -8,9 +8,9 @@ from app.models import Transaction
 
 
 def get_daily_revenue(
-    db: Session,
-    days: int = 30,
-    user_id: int | None = None,
+        db: Session,
+        days: int = 30,
+        user_id: int | None = None,
 ) -> list[dict]:
     """
     Return daily successful revenue for the requested number of days.
@@ -58,7 +58,7 @@ def get_daily_revenue(
 
     for i in range(days + 1):
         current_date = (
-            start_date + timedelta(days=i)
+                start_date + timedelta(days=i)
         ).date()
 
         revenue = revenue_by_date.get(
@@ -79,10 +79,10 @@ def get_daily_revenue(
 
 
 def forecast_revenue(
-    db: Session,
-    history_days: int = 30,
-    forecast_days: int = 7,
-    user_id: int | None = None,
+        db: Session,
+        history_days: int = 30,
+        forecast_days: int = 7,
+        user_id: int | None = None,
 ) -> dict:
     """
     Generate a simple weighted revenue forecast.
@@ -137,7 +137,7 @@ def forecast_revenue(
     )
 
     weighted_average = (
-        weighted_total / weight_total
+            weighted_total / weight_total
     )
 
     last_date = datetime.utcnow().date()
@@ -146,7 +146,7 @@ def forecast_revenue(
 
     for i in range(1, forecast_days + 1):
         forecast_date = (
-            last_date + timedelta(days=i)
+                last_date + timedelta(days=i)
         )
 
         forecast.append(

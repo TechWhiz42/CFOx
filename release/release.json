@@ -1,0 +1,5 @@
+{
+  "name": "cfox",
+  "release_stage": "20C",
+  "release_readiness": "preflight-and-smoke-tests"
+}

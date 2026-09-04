@@ -26,25 +26,25 @@ function conversationTitle(conversation) {
 }
 
 function CFOChat({
-    chatBoxRef,
-    messages,
-    QUICK_QUESTIONS,
-    askQuickQuestion,
-    chatLoading,
-    TOOL_LABELS,
-    question,
-    setQuestion,
-    handleKeyDown,
-    sendMessage,
+                     chatBoxRef,
+                     messages,
+                     QUICK_QUESTIONS,
+                     askQuickQuestion,
+                     chatLoading,
+                     TOOL_LABELS,
+                     question,
+                     setQuestion,
+                     handleKeyDown,
+                     sendMessage,
 
-    conversations = [],
-    activeConversationId = null,
-    conversationsLoading = false,
-    conversationError = "",
-    onNewConversation,
-    onSelectConversation,
-    onDeleteConversation,
-}) {
+                     conversations = [],
+                     activeConversationId = null,
+                     conversationsLoading = false,
+                     conversationError = "",
+                     onNewConversation,
+                     onSelectConversation,
+                     onDeleteConversation,
+                 }) {
     return (
         <section
             ref={chatBoxRef}
@@ -190,7 +190,7 @@ function CFOChat({
 
                         {!conversationsLoading &&
                             conversations.length ===
-                                0 && (
+                            0 && (
                                 <div
                                     style={{
                                         padding:
@@ -202,7 +202,7 @@ function CFOChat({
                                     }}
                                 >
                                     No saved conversations yet.
-                                    <br />
+                                    <br/>
                                     Start asking CFOx to
                                     create one.
                                 </div>
@@ -303,7 +303,7 @@ function CFOChat({
                                             >
                                                 {formatConversationDate(
                                                     conversation.updated_at ||
-                                                        conversation.created_at
+                                                    conversation.created_at
                                                 )}
                                             </div>
                                         </button>
@@ -485,31 +485,31 @@ function CFOChat({
                     >
                         {messages.length ===
                             0 && (
-                            <div
-                                style={{
-                                    opacity:
-                                        0.5,
-                                    lineHeight:
-                                        1.7,
-                                    padding:
-                                        "16px 0",
-                                }}
-                            >
-                                Ask CFOx something
-                                like:
-                                <br />
-                                <br />
-                                "Which payment method
-                                is performing worst?"
-                                <br />
-                                <br />
-                                "Why did revenue fall?"
-                                <br />
-                                <br />
-                                "What is my biggest
-                                financial risk?"
-                            </div>
-                        )}
+                                <div
+                                    style={{
+                                        opacity:
+                                            0.5,
+                                        lineHeight:
+                                            1.7,
+                                        padding:
+                                            "16px 0",
+                                    }}
+                                >
+                                    Ask CFOx something
+                                    like:
+                                    <br/>
+                                    <br/>
+                                    "Which payment method
+                                    is performing worst?"
+                                    <br/>
+                                    <br/>
+                                    "Why did revenue fall?"
+                                    <br/>
+                                    <br/>
+                                    "What is my biggest
+                                    financial risk?"
+                                </div>
+                            )}
 
                         {messages.map(
                             (
@@ -583,8 +583,8 @@ function CFOChat({
                                                         }}
                                                     >
                                                         {TOOL_LABELS[
-                                                            message.tool
-                                                        ] ||
+                                                                message.tool
+                                                                ] ||
                                                             "CFOx"}
                                                     </div>
                                                 )}
@@ -600,7 +600,7 @@ function CFOChat({
                                         >
                                             {message.content ||
                                                 (message.role ===
-                                                    "assistant" &&
+                                                "assistant" &&
                                                 chatLoading
                                                     ? "Analyzing..."
                                                     : "")}

@@ -1,9 +1,9 @@
 function MetricCard({
-    title,
-    value,
-    subtitle,
-    compact = false,
-}) {
+                        title,
+                        value,
+                        subtitle,
+                        compact = false,
+                    }) {
     return (
         <div
             className={
@@ -27,7 +27,7 @@ function MetricCard({
     );
 }
 
-function MiniMetric({ label, value }) {
+function MiniMetric({label, value}) {
     return (
         <div className="cfox-mini-metric">
             <div className="cfox-mini-label">{label}</div>
@@ -36,4 +36,4 @@ function MiniMetric({ label, value }) {
     );
 }
 
-export { MetricCard, MiniMetric };
+export {MetricCard, MiniMetric};

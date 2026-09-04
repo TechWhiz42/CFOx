@@ -32,8 +32,8 @@ def test_financial_actions_requires_auth(client):
 
 
 def test_financial_actions_endpoint(
-    client,
-    db,
+        client,
+        db,
 ):
     headers = create_authenticated_headers(db)
 
@@ -91,8 +91,8 @@ def test_financial_actions_endpoint(
 
 
 def test_financial_actions_supports_payment_method(
-    client,
-    db,
+        client,
+        db,
 ):
     headers = create_authenticated_headers(db)
 
@@ -119,8 +119,8 @@ def test_financial_actions_supports_payment_method(
 
 
 def test_financial_actions_rejects_invalid_payment_method(
-    client,
-    db,
+        client,
+        db,
 ):
     headers = create_authenticated_headers(db)
 

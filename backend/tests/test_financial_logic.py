@@ -5,15 +5,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
-from app.models import Transaction, User
 from app.analytics import (
     calculate_period_metrics,
-    compare_periods,
     calculate_anomaly_score,
     compare_payment_methods,
 )
 from app.cashflow import calculate_cashflow_risk
+from app.database import Base
+from app.models import Transaction, User
 
 
 # ---------------------------------------------------------
@@ -49,12 +48,12 @@ def db():
 # ---------------------------------------------------------
 
 def add_transaction(
-    db,
-    *,
-    amount,
-    status="success",
-    payment_method="upi",
-    days_ago=1,
+        db,
+        *,
+        amount,
+        status="success",
+        payment_method="upi",
+        days_ago=1,
 ):
     owner = db.query(User).filter(User.email == "financial-test@example.com").one_or_none()
     if owner is None:
@@ -287,6 +286,7 @@ def test_transaction_amount_preserves_decimal(db):
     db.refresh(transaction)
 
     assert transaction.amount == Decimal("1234.56")
+
 
 def test_compare_payment_methods(db):
     # Current period

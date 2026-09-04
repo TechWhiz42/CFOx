@@ -1,18 +1,15 @@
 import json
 from datetime import datetime, timedelta
 
-from app.config import settings
-from app.webhook_service import process_razorpay_event, verify_razorpay_signature
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.auth import get_current_user
-from app.models import Transaction, User
+from app.ai_investigation import investigate_financial_question
+from app.ai_service import generate_financial_insight
+from app.alerts import generate_financial_alerts
 from app.analytics import (
     calculate_anomaly_score,
     compare_periods,
@@ -21,32 +18,37 @@ from app.analytics import (
     get_daily_performance,
     get_customer_concentration,
 )
-from app.alerts import generate_financial_alerts
+from app.auth import get_current_user
 from app.cashflow import calculate_cashflow_risk
-from app.chat_service import (
-    route_question,
-    stream_cfo_answer,
-)
-from app.forecasting import (
-    get_daily_revenue,
-    forecast_revenue,
-)
-from app.ai_service import generate_financial_insight
-from app import ai_investigation
-from app.ai_investigation import investigate_financial_question
-from app.financial_health import calculate_financial_health
-from app.financial_actions import generate_financial_actions
 from app.cfo_conversation_service import (
     get_owned_conversation,
     get_conversation_history,
     prepare_cfo_exchange,
     persist_cfo_exchange,
 )
+from app.chat_service import (
+    route_question,
+    stream_cfo_answer,
+)
+from app.config import settings
+from app.database import get_db
+from app.financial_actions import generate_financial_actions
+from app.financial_health import calculate_financial_health
+from app.forecasting import (
+    get_daily_revenue,
+    forecast_revenue,
+)
 from app.models import ChatMessage, Conversation
-from app.tools import (
-    get_revenue_analysis,
-    get_cashflow_analysis,
-    get_failed_transactions,
+from app.models import Transaction, User
+from app.reliability import CFOAIServiceError, public_ai_error_detail
+from app.schemas import (
+    TransactionCreate,
+    TransactionResponse,
+    CFOConversationCreateRequest,
+    CFOConversationMessageRequest,
+    CFOConversationMessageResponse,
+    CFOConversationResponse,
+    CFOConversationDetailResponse,
 )
 from app.services.analytics_service import (
     get_dashboard_analysis,
@@ -55,16 +57,18 @@ from app.services.analytics_service import (
     get_anomaly_analysis,
 )
 from app.services.revenue_service import get_revenue_history
-from app.schemas import TransactionCreate, TransactionResponse
-from app.reliability import CFOAIServiceError, public_ai_error_detail
-
+from app.tools import (
+    get_revenue_analysis,
+    get_cashflow_analysis,
+    get_failed_transactions,
+)
+from app.webhook_service import process_razorpay_event, verify_razorpay_signature
 
 router = APIRouter(
     prefix="/transactions",
     tags=["Transactions"],
     dependencies=[Depends(get_current_user)],
 )
-
 
 # =========================================================
 # REQUEST / VALIDATION HELPERS
@@ -78,7 +82,7 @@ SUPPORTED_PAYMENT_METHODS = {
 
 
 def normalize_payment_method(
-    payment_method: str | None,
+        payment_method: str | None,
 ) -> str | None:
     """
     Normalize the API payment-method selector.
@@ -115,7 +119,7 @@ def normalize_payment_method(
 
 
 def display_payment_method(
-    payment_method: str | None,
+        payment_method: str | None,
 ) -> str:
     """
     Convert the internal representation back into
@@ -143,9 +147,9 @@ class CFOQuestion(BaseModel):
     status_code=status.HTTP_201_CREATED,
 )
 def create_transaction(
-    transaction: TransactionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        transaction: TransactionCreate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     """Create a transaction owned by the authenticated user.
 
@@ -192,10 +196,10 @@ def create_transaction(
     response_model=list[TransactionResponse],
 )
 def list_transactions(
-    limit: int = 50,
-    offset: int = 0,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        limit: int = 50,
+        offset: int = 0,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     """List only the authenticated user's transactions."""
 
@@ -220,9 +224,9 @@ def list_transactions(
 
 @router.get("/analytics/daily-revenue")
 def daily_revenue(
-    days: int = 30,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        days: int = 30,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
         raise HTTPException(
@@ -246,10 +250,10 @@ def daily_revenue(
 
 @router.get("/analytics/revenue-forecast")
 def revenue_forecast(
-    history_days: int = 30,
-    forecast_days: int = 7,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        history_days: int = 30,
+        forecast_days: int = 7,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if history_days < 3:
         raise HTTPException(
@@ -277,9 +281,9 @@ def revenue_forecast(
 
 @router.get("/analytics/cashflow-risk")
 def cashflow_risk(
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(
         payment_method
@@ -298,9 +302,9 @@ def cashflow_risk(
 
 @router.get("/analytics/ai-insight")
 def ai_insight(
-    payment_method: str = "upi",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str = "upi",
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(
         payment_method
@@ -316,14 +320,15 @@ def ai_insight(
         financial_data,
     )
 
+
 # =========================================================
 # PAYMENT METHOD ANALYTICS
 # =========================================================
 
 @router.get("/analytics/payment-methods")
 def payment_method_analytics(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     return analytics_compare_payment_methods(
         db,
@@ -337,9 +342,9 @@ def payment_method_analytics(
 
 @router.get("/analytics/anomaly")
 def anomaly_analysis(
-    payment_method: str = "upi",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str = "upi",
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(
         payment_method
@@ -350,15 +355,17 @@ def anomaly_analysis(
         payment_method=normalized_method,
         user_id=current_user.id,
     )
+
+
 # =========================================================
 # UNIFIED DASHBOARD
 # =========================================================
 
 @router.get("/dashboard")
 def dashboard(
-    payment_method: str = "upi",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str = "upi",
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(
         payment_method
@@ -377,9 +384,9 @@ def dashboard(
 
 @router.post("/cfo/chat")
 def cfo_chat(
-    request: CFOQuestion,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        request: CFOQuestion,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     question = request.question.strip()
 
@@ -464,8 +471,8 @@ def cfo_chat(
             ) + "\n"
 
             for token in stream_cfo_answer(
-                question,
-                tool_result,
+                    question,
+                    tool_result,
             ):
                 yield json.dumps(
                     {
@@ -492,9 +499,9 @@ def cfo_chat(
 
 @router.get("/alerts")
 def financial_alerts(
-    payment_method: str = "upi",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str = "upi",
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(
         payment_method
@@ -526,10 +533,10 @@ def financial_alerts(
 
 @router.get("/analytics/revenue-history")
 def revenue_history(
-    days: int = 30,
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        days: int = 30,
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 90:
         raise HTTPException(
@@ -548,16 +555,17 @@ def revenue_history(
         user_id=current_user.id,
     )
 
+
 # =========================================================
 # PHASE 9 — ADVANCED FINANCIAL ANALYTICS
 # =========================================================
 
 @router.get("/analytics/advanced-kpis")
 def advanced_kpis(
-    days: int = 30,
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        days: int = 30,
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
         raise HTTPException(status_code=400, detail="days must be between 1 and 365")
@@ -571,10 +579,10 @@ def advanced_kpis(
 
 @router.get("/analytics/daily-performance")
 def daily_performance(
-    days: int = 30,
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        days: int = 30,
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
         raise HTTPException(status_code=400, detail="days must be between 1 and 365")
@@ -588,11 +596,11 @@ def daily_performance(
 
 @router.get("/analytics/customer-concentration")
 def customer_concentration(
-    days: int = 30,
-    top_n: int = 10,
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        days: int = 30,
+        top_n: int = 10,
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     if days < 1 or days > 365:
         raise HTTPException(status_code=400, detail="days must be between 1 and 365")
@@ -615,9 +623,9 @@ class CFOInvestigationRequest(BaseModel):
 
 @router.post("/ai/investigate")
 def investigate_cfo_question(
-    request: CFOInvestigationRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        request: CFOInvestigationRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     question = request.question.strip()
     if not question:
@@ -637,9 +645,9 @@ def investigate_cfo_question(
 
 @router.get("/analytics/financial-health")
 def financial_health(
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(payment_method)
 
@@ -688,9 +696,9 @@ def financial_health(
 
 @router.get("/analytics/financial-actions")
 def financial_actions(
-    payment_method: str | None = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        payment_method: str | None = None,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     normalized_method = normalize_payment_method(payment_method)
 
@@ -759,6 +767,7 @@ class ConversationMessageRequest(BaseModel):
 def _conversation_payload(conversation: Conversation) -> dict:
     return {
         "id": conversation.id,
+        "user_id": conversation.user_id,
         "title": conversation.title,
         "created_at": conversation.created_at.isoformat(),
         "updated_at": conversation.updated_at.isoformat(),
@@ -779,11 +788,15 @@ def _conversation_with_messages(conversation: Conversation, messages: list[ChatM
     return payload
 
 
-@router.post("/cfo/conversations", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/cfo/conversations",
+    response_model=CFOConversationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_cfo_conversation(
-    request: ConversationCreateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        request: ConversationCreateRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     title = request.title.strip() if request.title else None
     conversation = Conversation(
@@ -798,8 +811,8 @@ def create_cfo_conversation(
 
 @router.get("/cfo/conversations")
 def list_cfo_conversations(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     conversations = (
         db.query(Conversation)
@@ -812,9 +825,9 @@ def list_cfo_conversations(
 
 @router.get("/cfo/conversations/{conversation_id}")
 def get_cfo_conversation(
-    conversation_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        conversation_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     conversation = get_owned_conversation(db, conversation_id, current_user.id)
     if conversation is None:
@@ -826,9 +839,9 @@ def get_cfo_conversation(
 
 @router.delete("/cfo/conversations/{conversation_id}")
 def delete_cfo_conversation(
-    conversation_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        conversation_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     conversation = get_owned_conversation(db, conversation_id, current_user.id)
     if conversation is None:
@@ -841,10 +854,10 @@ def delete_cfo_conversation(
 
 @router.post("/cfo/conversations/{conversation_id}/messages")
 def create_cfo_message(
-    conversation_id: int,
-    request: ConversationMessageRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        conversation_id: int,
+        request: ConversationMessageRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     question = request.content.strip()
     if not question:
@@ -889,10 +902,10 @@ def create_cfo_message(
 
 @router.post("/cfo/conversations/{conversation_id}/messages/stream")
 def stream_cfo_conversation_message(
-    conversation_id: int,
-    request: ConversationMessageRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+        conversation_id: int,
+        request: ConversationMessageRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user),
 ):
     question = request.content.strip()
     if not question:
@@ -956,8 +969,8 @@ webhook_router = APIRouter(
 
 @webhook_router.post("/razorpay")
 async def razorpay_webhook(
-    request: Request,
-    db: Session = Depends(get_db),
+        request: Request,
+        db: Session = Depends(get_db),
 ):
     """Receive Razorpay payment events without JWT authentication.
 
@@ -993,9 +1006,9 @@ async def razorpay_webhook(
         )
 
     if not verify_razorpay_signature(
-        body,
-        signature,
-        settings.RAZORPAY_WEBHOOK_SECRET,
+            body,
+            signature,
+            settings.RAZORPAY_WEBHOOK_SECRET,
     ):
         raise HTTPException(
             status_code=400,

@@ -1,9 +1,9 @@
-import { MiniMetric } from "./Metrics";
+import {MiniMetric} from "./Metrics";
 
 function RevenueTimeline({
-    history,
-    forecast,
-}) {
+                             history,
+                             forecast,
+                         }) {
     const actual = Array.isArray(history)
         ? history
         : [];
@@ -84,14 +84,14 @@ function RevenueTimeline({
                 points.length - 1,
                 1
             )) *
-            chartWidth;
+        chartWidth;
 
     const y = (value) =>
         top +
         (1 -
             (value - minValue) /
-                range) *
-            chartHeight;
+            range) *
+        chartHeight;
 
     const actualPoints = actual.map(
         (item, index) => {
@@ -122,7 +122,7 @@ function RevenueTimeline({
                 y: y(
                     Number(
                         item.predicted_revenue ||
-                            0
+                        0
                     )
                 ),
             };
@@ -145,8 +145,8 @@ function RevenueTimeline({
     const forecastPath =
         forecastPoints.length > 0
             ? `M ${actualPoints[actualPoints.length - 1].x} ${actualPoints[actualPoints.length - 1].y} ${linePath(
-                  forecastPoints
-              ).replace(/^M /, "L ")}`
+                forecastPoints
+            ).replace(/^M /, "L ")}`
             : "";
 
     const formatDate = (date) => {
@@ -175,15 +175,15 @@ function RevenueTimeline({
         0,
         Math.floor(
             (points.length - 1) *
-                0.25
+            0.25
         ),
         Math.floor(
             (points.length - 1) *
-                0.5
+            0.5
         ),
         Math.floor(
             (points.length - 1) *
-                0.75
+            0.75
         ),
         points.length - 1,
     ].filter(
@@ -195,11 +195,11 @@ function RevenueTimeline({
     const gridValues = [
         maxValue,
         maxValue -
-            range * 0.25,
+        range * 0.25,
         maxValue -
-            range * 0.5,
+        range * 0.5,
         maxValue -
-            range * 0.75,
+        range * 0.75,
         minValue,
     ];
 
@@ -307,14 +307,14 @@ function RevenueTimeline({
                                             {formatDate(
                                                 actual[
                                                     index
-                                                ]
+                                                    ]
                                                     .date
                                             )}{" "}
                                             ·{" "}
                                             {formatCurrency(
                                                 actual[
                                                     index
-                                                ]
+                                                    ]
                                                     .revenue
                                             )}
                                         </title>
@@ -329,15 +329,15 @@ function RevenueTimeline({
                             <line
                                 x1={
                                     actualPoints[
-                                        actualPoints.length -
-                                            1
-                                    ].x
+                                    actualPoints.length -
+                                    1
+                                        ].x
                                 }
                                 x2={
                                     actualPoints[
-                                        actualPoints.length -
-                                            1
-                                    ].x
+                                    actualPoints.length -
+                                    1
+                                        ].x
                                 }
                                 y1={top}
                                 y2={
@@ -380,14 +380,14 @@ function RevenueTimeline({
                                             {formatDate(
                                                 projected[
                                                     index
-                                                ]
+                                                    ]
                                                     .date
                                             )}{" "}
                                             ·{" "}
                                             {formatCurrency(
                                                 projected[
                                                     index
-                                                ]
+                                                    ]
                                                     .predicted_revenue
                                             )}
                                         </title>
@@ -415,10 +415,10 @@ function RevenueTimeline({
                                     0
                                         ? "start"
                                         : index ===
-                                            points.length -
-                                                1
-                                          ? "end"
-                                          : "middle"
+                                        points.length -
+                                        1
+                                            ? "end"
+                                            : "middle"
                                 }
                                 fill="rgba(255,255,255,0.42)"
                                 fontSize="10"
@@ -426,7 +426,7 @@ function RevenueTimeline({
                                 {formatDate(
                                     points[
                                         index
-                                    ].date
+                                        ].date
                                 )}
                             </text>
                         )
@@ -454,7 +454,7 @@ function RevenueTimeline({
                                 total +
                                 Number(
                                     item.revenue ||
-                                        0
+                                    0
                                 ),
                             0
                         )
@@ -472,7 +472,7 @@ function RevenueTimeline({
                                 total +
                                 Number(
                                     item.predicted_revenue ||
-                                        0
+                                    0
                                 ),
                             0
                         )
@@ -484,11 +484,11 @@ function RevenueTimeline({
                     value={
                         actual.length > 0
                             ? formatCurrency(
-                                  actual[
-                                      actual.length -
-                                          1
-                                  ].revenue
-                              )
+                                actual[
+                                actual.length -
+                                1
+                                    ].revenue
+                            )
                             : "N/A"
                     }
                 />

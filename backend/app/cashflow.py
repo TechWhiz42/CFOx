@@ -7,11 +7,11 @@ from app.forecasting import forecast_revenue
 
 
 def calculate_cashflow_risk(
-    db: Session,
-    payment_method: str | None = None,
-    comparison: dict | None = None,
-    forecast: dict | None = None,
-    user_id: int | None = None,
+        db: Session,
+        payment_method: str | None = None,
+        comparison: dict | None = None,
+        forecast: dict | None = None,
+        user_id: int | None = None,
 ):
     """
     Calculate cash-flow risk from existing analytics data when
@@ -53,9 +53,9 @@ def calculate_cashflow_risk(
 
     if previous_revenue > 0:
         revenue_change_percent = (
-            (current_revenue - previous_revenue)
-            / previous_revenue
-        ) * Decimal("100")
+                                         (current_revenue - previous_revenue)
+                                         / previous_revenue
+                                 ) * Decimal("100")
 
     failure_rate = Decimal(
         str(comparison["current_period"]["failure_rate"])

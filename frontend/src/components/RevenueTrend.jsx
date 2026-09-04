@@ -1,11 +1,11 @@
 import RevenueTimeline from "./RevenueTimeline";
 
 function RevenueTrend({
-    revenueHistoryLoading,
-    historyDays,
-    forecastDays,
-    paymentMethod,
-}) {
+                          revenueHistoryLoading,
+                          historyDays,
+                          forecastDays,
+                          paymentMethod,
+                      }) {
     return (
         <section
             style={{
@@ -30,7 +30,7 @@ function RevenueTrend({
                 }}
             >
                 <div>
-                    <h2 style={{ margin: 0 }}>
+                    <h2 style={{margin: 0}}>
                         Revenue Trend
                     </h2>
 

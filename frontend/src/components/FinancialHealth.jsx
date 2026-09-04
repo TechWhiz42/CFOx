@@ -54,42 +54,42 @@ function FinancialHealth({
     },];
 
     return (<section className="cfox-financial-health">
-            <div className="cfox-financial-health-header">
-                <div>
-                    <div className="cfox-section-kicker">
-                        FINANCIAL HEALTH
-                    </div>
-
-                    <h2>Business health score</h2>
-
-                    <p>
-                        A deterministic view of your current financial
-                        position across revenue, payments, cash flow and
-                        anomalies.
-                    </p>
+        <div className="cfox-financial-health-header">
+            <div>
+                <div className="cfox-section-kicker">
+                    FINANCIAL HEALTH
                 </div>
 
-                {financialHealth?.payment_method && (<div className="cfox-financial-health-method">
-                        {financialHealth.payment_method === "all" ? "All payment methods" : financialHealth.payment_method.toUpperCase()}
-                    </div>)}
+                <h2>Business health score</h2>
+
+                <p>
+                    A deterministic view of your current financial
+                    position across revenue, payments, cash flow and
+                    anomalies.
+                </p>
             </div>
 
-            {financialHealthLoading ? (<div className="cfox-financial-health-loading">
-                    <div className="cfox-financial-health-score-skeleton"/>
-                    <div className="cfox-financial-health-lines">
-                        <span/>
-                        <span/>
-                        <span/>
-                        <span/>
-                    </div>
-                </div>) : !financialHealth?.health ? (<div className="cfox-financial-health-empty">
-                    Financial health analysis is currently unavailable.
-                </div>) : (<div className="cfox-financial-health-body">
-                    <div className="cfox-financial-health-score">
-                        <div
-                            className="cfox-financial-health-score-ring"
-                            style={{
-                                background: `
+            {financialHealth?.payment_method && (<div className="cfox-financial-health-method">
+                {financialHealth.payment_method === "all" ? "All payment methods" : financialHealth.payment_method.toUpperCase()}
+            </div>)}
+        </div>
+
+        {financialHealthLoading ? (<div className="cfox-financial-health-loading">
+            <div className="cfox-financial-health-score-skeleton"/>
+            <div className="cfox-financial-health-lines">
+                <span/>
+                <span/>
+                <span/>
+                <span/>
+            </div>
+        </div>) : !financialHealth?.health ? (<div className="cfox-financial-health-empty">
+            Financial health analysis is currently unavailable.
+        </div>) : (<div className="cfox-financial-health-body">
+            <div className="cfox-financial-health-score">
+                <div
+                    className="cfox-financial-health-score-ring"
+                    style={{
+                        background: `
             radial-gradient(
                 circle at center,
                 #ffffff 57%,
@@ -102,59 +102,59 @@ function FinancialHealth({
                 #e8edf5 360deg
             )
         `,
-                            }}
-                        >
-                            <div>
-                                <strong>
-                                    {formatScore(financialHealth.health.score)}
-                                </strong>
+                    }}
+                >
+                    <div>
+                        <strong>
+                            {formatScore(financialHealth.health.score)}
+                        </strong>
 
-                                <span>/100</span>
-                            </div>
-                        </div>
-
-                        <div
-                            className={`cfox-financial-health-status ${getStatusClass(financialHealth.health.status)}`}
-                        >
-                            {getStatusLabel(financialHealth.health.status)}
-                        </div>
+                        <span>/100</span>
                     </div>
+                </div>
 
-                    <div className="cfox-financial-health-breakdown">
-                        {rows.map((row) => {
-                            const value = Number(row.value);
+                <div
+                    className={`cfox-financial-health-status ${getStatusClass(financialHealth.health.status)}`}
+                >
+                    {getStatusLabel(financialHealth.health.status)}
+                </div>
+            </div>
 
-                            const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(value, row.max)) : 0;
+            <div className="cfox-financial-health-breakdown">
+                {rows.map((row) => {
+                    const value = Number(row.value);
 
-                            const percentage = row.max > 0 ? (safeValue / row.max) * 100 : 0;
+                    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(value, row.max)) : 0;
 
-                            return (<div
-                                    className="cfox-health-row"
-                                    key={row.key}
-                                >
-                                    <div className="cfox-health-row-top">
+                    const percentage = row.max > 0 ? (safeValue / row.max) * 100 : 0;
+
+                    return (<div
+                        className="cfox-health-row"
+                        key={row.key}
+                    >
+                        <div className="cfox-health-row-top">
                                         <span>
                                             {row.label}
                                         </span>
 
-                                        <strong>
-                                            {Number.isFinite(value) ? `${value.toFixed(1)} / ${row.max}` : "--"}
-                                        </strong>
-                                    </div>
+                            <strong>
+                                {Number.isFinite(value) ? `${value.toFixed(1)} / ${row.max}` : "--"}
+                            </strong>
+                        </div>
 
-                                    <div className="cfox-health-track">
-                                        <div
-                                            className="cfox-health-fill"
-                                            style={{
-                                                width: `${percentage}%`,
-                                            }}
-                                        />
-                                    </div>
-                                </div>);
-                        })}
-                    </div>
-                </div>)}
-        </section>);
+                        <div className="cfox-health-track">
+                            <div
+                                className="cfox-health-fill"
+                                style={{
+                                    width: `${percentage}%`,
+                                }}
+                            />
+                        </div>
+                    </div>);
+                })}
+            </div>
+        </div>)}
+    </section>);
 }
 
 export default FinancialHealth;

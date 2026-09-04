@@ -1,13 +1,13 @@
 function Header({
-    paymentMethod,
-    setPaymentMethod,
-    loading,
-    chatLoading,
-    theme,
-    setTheme,
-    user,
-    onLogout,
-}) {
+                    paymentMethod,
+                    setPaymentMethod,
+                    loading,
+                    chatLoading,
+                    theme,
+                    setTheme,
+                    user,
+                    onLogout,
+                }) {
     const disabled = loading || chatLoading;
 
     return (
@@ -71,7 +71,7 @@ function Header({
                     )}
 
                     <div className="cfox-system-status">
-                        <span className="cfox-status-dot" />
+                        <span className="cfox-status-dot"/>
                         System operational
                     </div>
 

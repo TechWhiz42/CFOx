@@ -25,12 +25,12 @@ def _payment_from_payload(payload: dict) -> dict | None:
 
 
 def process_razorpay_event(
-    db: Session,
-    *,
-    event_id: str,
-    event_name: str,
-    payload: dict,
-    owner_user_id: int,
+        db: Session,
+        *,
+        event_id: str,
+        event_name: str,
+        payload: dict,
+        owner_user_id: int,
 ) -> str:
     """Process one Razorpay event exactly once.
 
@@ -106,8 +106,8 @@ def process_razorpay_event(
                         status=new_status,
                         payment_method=method,
                         customer_id=(
-                            payment.get("email")
-                            or payment.get("contact")
+                                payment.get("email")
+                                or payment.get("contact")
                         ),
                         created_at=(
                             datetime.utcfromtimestamp(payment["created_at"])
@@ -124,9 +124,9 @@ def process_razorpay_event(
         db.rollback()
         # A concurrent duplicate event may have won the unique constraint.
         if (
-            db.query(RazorpayWebhookEvent)
-            .filter(RazorpayWebhookEvent.event_id == event_id)
-            .first()
+                db.query(RazorpayWebhookEvent)
+                        .filter(RazorpayWebhookEvent.event_id == event_id)
+                        .first()
         ):
             return "duplicate"
         raise

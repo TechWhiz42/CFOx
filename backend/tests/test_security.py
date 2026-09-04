@@ -128,8 +128,8 @@ def test_invalid_bearer_token_is_rejected(client):
 # ---------------------------------------------------------------------------
 
 def test_cross_user_transactions_are_not_visible(
-    security_client,
-    db,
+        security_client,
+        db,
 ):
     """
     A user must only be able to see their own transactions.
@@ -190,8 +190,8 @@ def test_cross_user_transactions_are_not_visible(
 
 
 def test_transaction_create_cannot_assign_another_user(
-    security_client,
-    db,
+        security_client,
+        db,
 ):
     """
     A client-supplied user_id must never allow assigning a transaction
@@ -239,8 +239,8 @@ def test_transaction_create_cannot_assign_another_user(
 
 
 def test_duplicate_transaction_does_not_create_second_record(
-    security_client,
-    db,
+        security_client,
+        db,
 ):
     """
     Replaying the same payment transaction must not create duplicates.
@@ -287,8 +287,8 @@ def test_duplicate_transaction_does_not_create_second_record(
 # ---------------------------------------------------------------------------
 
 def test_cross_user_conversation_is_not_readable(
-    security_client,
-    db,
+        security_client,
+        db,
 ):
     """
     A user must not be able to read another user's conversation.
@@ -328,8 +328,8 @@ def test_cross_user_conversation_is_not_readable(
 
 
 def test_cross_user_conversation_cannot_be_deleted(
-    security_client,
-    db,
+        security_client,
+        db,
 ):
     """
     A user must not be able to delete another user's conversation.
@@ -357,19 +357,19 @@ def test_cross_user_conversation_cannot_be_deleted(
     assert response.status_code == 404
 
     assert (
-        db.query(Conversation)
-        .filter(
-            Conversation.id == conversation.id
-        )
-        .first()
-        is not None
+            db.query(Conversation)
+            .filter(
+                Conversation.id == conversation.id
+            )
+            .first()
+            is not None
     )
 
 
 def test_cross_user_conversation_cannot_receive_message(
-    security_client,
-    db,
-    monkeypatch,
+        security_client,
+        db,
+        monkeypatch,
 ):
     """
     Unauthorized conversation mutation must stop before CFO generation.
@@ -420,7 +420,7 @@ def test_cross_user_conversation_cannot_receive_message(
 # ---------------------------------------------------------------------------
 
 def test_cfo_question_has_length_validation(
-    security_client,
+        security_client,
 ):
     """
     CFO questions above the configured maximum should be rejected.
@@ -438,7 +438,7 @@ def test_cfo_question_has_length_validation(
 
 
 def test_cfo_empty_persistent_message_is_rejected(
-    security_client,
+        security_client,
 ):
     """
     Empty/whitespace persistent CFO messages must be rejected.
@@ -463,7 +463,7 @@ def test_cfo_empty_persistent_message_is_rejected(
 
 
 def test_invalid_payment_method_is_rejected(
-    security_client,
+        security_client,
 ):
     """Unsupported payment methods must not reach analytics logic."""
     client, _ = security_client
@@ -547,8 +547,8 @@ def test_webhook_rejects_invalid_signature(client):
 # ---------------------------------------------------------------------------
 
 def test_internal_errors_are_not_exposed(
-    security_client,
-    monkeypatch,
+        security_client,
+        monkeypatch,
 ):
     """
     Internal exceptions must result in a safe generic response rather
@@ -564,7 +564,7 @@ def test_internal_errors_are_not_exposed(
         )
 
     dashboard_attribute = (
-        "get_" + "dashboard_" + "analysis"
+            "get_" + "dashboard_" + "analysis"
     )
 
     monkeypatch.setattr(
@@ -582,13 +582,13 @@ def test_internal_errors_are_not_exposed(
     assert response.status_code == 500
 
     assert (
-        "PRIVATE_INTERNAL_DATABASE_INFORMATION"
-        not in response.text
+            "PRIVATE_INTERNAL_DATABASE_INFORMATION"
+            not in response.text
     )
 
     if response.headers.get(
-        "content-type",
-        "",
+            "content-type",
+            "",
     ).startswith("application/json"):
         body = response.json()
 

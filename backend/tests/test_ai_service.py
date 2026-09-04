@@ -1,9 +1,6 @@
 import json
 
-import pytest
-
 import app.ai_service as ai_service
-
 
 FINANCIAL_DATA = {
     "payment_method": "upi",

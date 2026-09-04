@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { useAuth } from "./AuthContext";
+import {useState} from "react";
+import {useAuth} from "./AuthContext";
 
-export default function Register({ onLogin }) {
-    const { register, login } = useAuth();
+export default function Register({onLogin}) {
+    const {register, login} = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");

@@ -1,0 +1,107 @@
+.financial-planning {
+    margin: 24px 0;
+    padding: 24px;
+    border: 1px solid rgba(127, 127, 127, .18);
+    border-radius: 18px
+}
+
+.planning-header span {
+    font-size: 11px;
+    letter-spacing: .14em;
+    opacity: .6
+}
+
+.planning-header h2 {
+    margin: 5px 0
+}
+
+.planning-header p {
+    opacity: .65
+}
+
+.planning-form {
+    display: grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 18px
+}
+
+.planning-form label {
+    font-size: 12px
+}
+
+.planning-form input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 6px;
+    padding: 10px;
+    border: 1px solid rgba(127, 127, 127, .25);
+    border-radius: 9px;
+    background: transparent
+}
+
+.planning-form button, .planning-ask {
+    align-self: end;
+    padding: 10px 14px;
+    border: 1px solid rgba(127, 127, 127, .25);
+    border-radius: 9px;
+    background: transparent;
+    cursor: pointer
+}
+
+.planning-result {
+    margin-top: 18px
+}
+
+.planning-status {
+    display: inline-block;
+    padding: 7px 10px;
+    border-radius: 9px;
+    background: rgba(127, 127, 127, .1)
+}
+
+.planning-grid {
+    display: grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 14px
+}
+
+.planning-grid div {
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(127, 127, 127, .06)
+}
+
+.planning-grid small {
+    display: block;
+    opacity: .6
+}
+
+.planning-grid strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 20px
+}
+
+.planning-note {
+    opacity: .6;
+    font-size: 12px
+}
+
+@media (max-width: 800px) {
+    .planning-form {
+        grid-template-columns:1fr 1fr
+    }
+
+    .planning-grid {
+        grid-template-columns:1fr 1fr
+    }
+}
+
+@media (max-width: 520px) {
+    .planning-form, .planning-grid {
+        grid-template-columns:1fr
+    }
+}

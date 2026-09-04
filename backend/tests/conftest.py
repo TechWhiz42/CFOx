@@ -62,6 +62,7 @@ def db():
 @pytest.fixture
 def client(db):
     """Unauthenticated test client."""
+
     def override_get_db():
         try:
             yield db
@@ -71,8 +72,8 @@ def client(db):
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(
-        app,
-        raise_server_exceptions=False,
+            app,
+            raise_server_exceptions=False,
     ) as client:
         yield client
 
