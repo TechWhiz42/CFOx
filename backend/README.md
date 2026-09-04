@@ -3,10 +3,11 @@
 ## Authentication boundary
 
 - `/auth/register` and `/auth/login` are public.
-- `/auth/me` requires a Bearer access token.
+- `/auth/login` sets an HttpOnly `cfox_access_token` cookie.
+- `/auth/me` accepts the auth cookie and also supports Bearer tokens for tests/compatibility.
 - Every `/transactions/*` endpoint requires a valid active user.
 - Passwords are hashed with Argon2 through `pwdlib`.
-- Access tokens are signed JWTs.
+- Access tokens are signed JWTs with issuer and audience validation.
 
 ## Local setup
 
@@ -26,3 +27,18 @@ pytest -q
 ```
 
 The test suite uses an isolated SQLite database and a test JWT secret.
+
+## Demo seed
+
+With the production Compose stack running:
+
+```powershell
+docker compose -f ..\docker-compose.production.yml --env-file ..\.env.production exec backend python seed.py
+```
+
+Demo credentials:
+
+```text
+demo@cfox.local
+StrongPassword123
+```

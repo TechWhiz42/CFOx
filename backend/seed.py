@@ -1,10 +1,13 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
+from app.auth import hash_password
 from app.database import SessionLocal
-from app.models import Transaction
+from app.models import Transaction, User
 
 PAYMENT_METHODS = ["upi", "card", "netbanking"]
+DEMO_EMAIL = "demo@cfox.local"
+DEMO_PASSWORD = "StrongPassword123"
 
 
 def get_failure_probability(method, days_ago):
@@ -20,11 +23,50 @@ def get_failure_probability(method, days_ago):
     return 0.06
 
 
+def get_or_create_demo_user(db):
+    user = (
+        db.query(User)
+        .filter(User.email == DEMO_EMAIL)
+        .first()
+    )
+
+    if user is not None:
+        return user
+
+    user = User(
+        email=DEMO_EMAIL,
+        hashed_password=hash_password(DEMO_PASSWORD),
+        is_active=1,
+        created_at=datetime.now(timezone.utc),
+    )
+
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
 def seed_transactions(count=2000):
     db = SessionLocal()
 
     try:
-        start_date = datetime.utcnow() - timedelta(days=90)
+        user = get_or_create_demo_user(db)
+
+        existing_count = (
+            db.query(Transaction)
+            .filter(Transaction.user_id == user.id)
+            .count()
+        )
+
+        if existing_count:
+            print(
+                f"Demo user already has {existing_count} transactions. "
+                "Skipping seed."
+            )
+            print(f"Demo email: {DEMO_EMAIL}")
+            print(f"Demo password: {DEMO_PASSWORD}")
+            return
 
         transactions = []
 
@@ -32,11 +74,11 @@ def seed_transactions(count=2000):
             days_ago = random.randint(0, 89)
 
             created_at = (
-                    datetime.utcnow()
-                    - timedelta(
-                days=days_ago,
-                seconds=random.randint(0, 86400)
-            )
+                datetime.now(timezone.utc)
+                - timedelta(
+                    days=days_ago,
+                    seconds=random.randint(0, 86400),
+                )
             )
 
             payment_method = random.choice(PAYMENT_METHODS)
@@ -62,7 +104,8 @@ def seed_transactions(count=2000):
                 status=status,
                 payment_method=payment_method,
                 customer_id=f"cust_{random.randint(1, 500):04d}",
-                created_at=created_at
+                created_at=created_at,
+                user_id=user.id,
             )
 
             transactions.append(transaction)
@@ -71,6 +114,8 @@ def seed_transactions(count=2000):
         db.commit()
 
         print(f"Inserted {count} transactions.")
+        print(f"Demo email: {DEMO_EMAIL}")
+        print(f"Demo password: {DEMO_PASSWORD}")
 
     except Exception:
         db.rollback()

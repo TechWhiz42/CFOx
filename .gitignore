@@ -15,6 +15,7 @@ env/
 .env
 .env.*
 !.env.example
+!/.env.production.example
 
 # SQLite / local databases
 *.db
@@ -50,6 +51,11 @@ coverage.xml
 # Temporary files
 *.tmp
 *.temp
+
+# Legacy/local backup folders
+.cfox_backup/
+deploy_legacy/
+backend/alembic_legacy/
 
 # Database backups
 release/backups/
