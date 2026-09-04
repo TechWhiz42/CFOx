@@ -2,22 +2,10 @@ import os
 
 # Configure test-only environment BEFORE importing app modules.
 # This keeps tests independent of a developer's local .env file.
-os.environ.setdefault(
-    "AUTH_SECRET_KEY",
-    "test-secret-key-for-cfox",
-)
-os.environ.setdefault(
-    "DATABASE_URL",
-    "sqlite:///./test_runtime.db",
-)
-os.environ.setdefault(
-    "RAZORPAY_WEBHOOK_SECRET",
-    "test-webhook-secret",
-)
-os.environ.setdefault(
-    "RAZORPAY_WEBHOOK_USER_ID",
-    "1",
-)
+os.environ["AUTH_SECRET_KEY"] = "test-secret-key-for-cfox"
+os.environ["DATABASE_URL"] = "sqlite:///./test_runtime.db"
+os.environ["RAZORPAY_WEBHOOK_SECRET"] = "test-webhook-secret"
+os.environ["RAZORPAY_WEBHOOK_USER_ID"] = "1"
 
 import pytest
 

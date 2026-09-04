@@ -1,11 +1,6 @@
 import hashlib
 import hmac
 import json
-import os
-
-os.environ.setdefault("RAZORPAY_WEBHOOK_SECRET", "test-webhook-secret")
-os.environ.setdefault("RAZORPAY_WEBHOOK_USER_ID", "1")
-
 from app.models import RazorpayWebhookEvent, Transaction, User
 from app.auth import hash_password
 from app.config import settings
@@ -32,7 +27,11 @@ def payload(event, payment_id="pay_webhook_1", status="captured"):
 
 
 def sign(body: bytes):
-    return hmac.new(b"test-webhook-secret", body, hashlib.sha256).hexdigest()
+    return hmac.new(
+        settings.RAZORPAY_WEBHOOK_SECRET.encode("utf-8"),
+        body,
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def ensure_owner(db):

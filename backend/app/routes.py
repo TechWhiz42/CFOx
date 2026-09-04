@@ -1050,7 +1050,6 @@ webhook_router = APIRouter(
 
 
 @webhook_router.post("/razorpay")
-@webhook_router.post("/razorpay")
 async def razorpay_webhook(
         request: Request,
         db: Session = Depends(get_db),
