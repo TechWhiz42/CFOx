@@ -67,6 +67,9 @@ from app.tools import (
     get_revenue_analysis,
 )
 from app.webhook_service import process_razorpay_event, verify_razorpay_signature
+import logging
+
+logger = logging.getLogger("cfox.routes")
 
 router = APIRouter(
     prefix="/transactions",
@@ -1002,6 +1005,7 @@ webhook_router = APIRouter(
 
 
 @webhook_router.post("/razorpay")
+@webhook_router.post("/razorpay")
 async def razorpay_webhook(
         request: Request,
         db: Session = Depends(get_db),
@@ -1012,12 +1016,20 @@ async def razorpay_webhook(
     )
 
     if not settings.RAZORPAY_WEBHOOK_SECRET:
+        logger.warning(
+            "webhook_razorpay_secret_not_configured"
+        )
+
         raise HTTPException(
             status_code=503,
             detail="Razorpay webhook secret is not configured.",
         )
 
     if settings.RAZORPAY_WEBHOOK_USER_ID < 1:
+        logger.warning(
+            "webhook_razorpay_owner_not_configured"
+        )
+
         raise HTTPException(
             status_code=503,
             detail="Razorpay webhook owner is not configured.",
@@ -1028,12 +1040,20 @@ async def razorpay_webhook(
     event_id = request.headers.get("x-razorpay-event-id", "")
 
     if not event_id:
+        logger.warning(
+            "webhook_razorpay_missing_event_id"
+        )
+
         raise HTTPException(
             status_code=400,
             detail="Missing x-razorpay-event-id header.",
         )
 
     if len(event_id) > 255:
+        logger.warning(
+            "webhook_razorpay_event_id_too_long"
+        )
+
         raise HTTPException(
             status_code=400,
             detail="x-razorpay-event-id is too long.",
@@ -1044,6 +1064,11 @@ async def razorpay_webhook(
             signature,
             settings.RAZORPAY_WEBHOOK_SECRET,
     ):
+        logger.warning(
+            "webhook_razorpay_invalid_signature event_id=%s",
+            event_id,
+        )
+
         raise HTTPException(
             status_code=400,
             detail="Invalid Razorpay webhook signature.",
@@ -1052,12 +1077,22 @@ async def razorpay_webhook(
     try:
         payload = json.loads(body)
     except json.JSONDecodeError as exc:
+        logger.warning(
+            "webhook_razorpay_invalid_json event_id=%s",
+            event_id,
+        )
+
         raise HTTPException(
             status_code=400,
             detail="Webhook body must contain valid JSON.",
         ) from exc
 
     if not isinstance(payload, dict):
+        logger.warning(
+            "webhook_razorpay_non_object_body event_id=%s",
+            event_id,
+        )
+
         raise HTTPException(
             status_code=400,
             detail="Webhook body must contain a JSON object.",
@@ -1066,6 +1101,11 @@ async def razorpay_webhook(
     event_name = payload.get("event")
 
     if not isinstance(event_name, str) or not event_name:
+        logger.warning(
+            "webhook_razorpay_missing_event_name event_id=%s",
+            event_id,
+        )
+
         raise HTTPException(
             status_code=400,
             detail="Webhook event is missing.",
@@ -1080,6 +1120,12 @@ async def razorpay_webhook(
             owner_user_id=settings.RAZORPAY_WEBHOOK_USER_ID,
         )
     except ValueError as exc:
+        logger.warning(
+            "webhook_razorpay_rejected event_id=%s reason=%s",
+            event_id,
+            str(exc),
+        )
+
         raise HTTPException(
             status_code=400,
             detail=str(exc),

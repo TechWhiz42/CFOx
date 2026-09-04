@@ -85,3 +85,9 @@ if ((Get-Item $backupPath).Length -le 0) {
 }
 
 Write-Host "Backup complete: $backupPath"
+
+$rotateScript = Join-Path "release/scripts" "rotate-backups.ps1"
+
+if (Test-Path $rotateScript) {
+    powershell -ExecutionPolicy Bypass -File $rotateScript -BackupDir $OutputDir -Keep 10
+}

@@ -47,17 +47,21 @@ export default function Login({onRegister}) {
                 </div>
 
                 {error && (
-                    <div className="auth-error">
+                    <div
+                        className="auth-error"
+                        role="alert"
+                    >
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <label>
+                    <label htmlFor="login-email">
                         Email
                     </label>
 
                     <input
+                        id="login-email"
                         type="email"
                         value={email}
                         onChange={(event) =>
@@ -68,11 +72,12 @@ export default function Login({onRegister}) {
                         autoComplete="email"
                     />
 
-                    <label>
+                    <label htmlFor="login-password">
                         Password
                     </label>
 
                     <input
+                        id="login-password"
                         type="password"
                         value={password}
                         onChange={(event) =>

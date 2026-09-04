@@ -7,6 +7,7 @@ from app.errors import register_exception_handlers
 from app.health import router as health_router
 from app.observability import configure_logging, install_request_observability
 from app.routes import router, webhook_router
+from app.request_limits import install_request_size_limit
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -18,6 +19,7 @@ app = FastAPI(
 configure_logging(getattr(settings, "LOG_LEVEL", "INFO"))
 register_exception_handlers(app)
 install_request_observability(app)
+install_request_size_limit(app)
 
 app.add_middleware(
     CORSMiddleware,

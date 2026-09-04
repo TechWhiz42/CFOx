@@ -1,8 +1,11 @@
+import logging
 import time
 from collections import defaultdict, deque
 from threading import Lock
 
 from fastapi import HTTPException, Request, status
+
+logger = logging.getLogger("cfox.security")
 
 
 class SlidingWindowRateLimiter:
@@ -53,6 +56,11 @@ def safe_rate_limit_key(user_id, fallback):
 
 def enforce_rate_limit(limiter: SlidingWindowRateLimiter, key: str) -> None:
     if not limiter.allow(key):
+        logger.warning(
+            "rate_limit_exceeded key=%s",
+            key,
+        )
+
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many requests. Please wait and try again.",

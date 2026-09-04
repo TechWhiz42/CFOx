@@ -79,5 +79,9 @@ class Settings:
         os.getenv("RAZORPAY_WEBHOOK_USER_ID", "0")
     )
 
+    MAX_REQUEST_BODY_BYTES: int = int(
+        os.getenv("MAX_REQUEST_BODY_BYTES", "1048576")
+    )
+
 
 settings = Settings()

@@ -56,15 +56,8 @@ export default function Register({onLogin}) {
         setLoading(true);
 
         try {
-            await register(
-                email.trim(),
-                password
-            );
-
-            await login(
-                email.trim(),
-                password
-            );
+            await register(email.trim(), password);
+            await login(email.trim(), password);
         } catch (error) {
             setError(error.message);
         } finally {
@@ -94,15 +87,21 @@ export default function Register({onLogin}) {
                 </div>
 
                 {error && (
-                    <div className="auth-error">
+                    <div
+                        className="auth-error"
+                        role="alert"
+                    >
                         {error}
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <label>Email</label>
+                    <label htmlFor="register-email">
+                        Email
+                    </label>
 
                     <input
+                        id="register-email"
                         type="email"
                         value={email}
                         onChange={(event) =>
@@ -113,9 +112,12 @@ export default function Register({onLogin}) {
                         autoComplete="email"
                     />
 
-                    <label>Password</label>
+                    <label htmlFor="register-password">
+                        Password
+                    </label>
 
                     <input
+                        id="register-password"
                         type="password"
                         value={password}
                         onChange={(event) =>
@@ -126,9 +128,12 @@ export default function Register({onLogin}) {
                         autoComplete="new-password"
                     />
 
-                    <label>Confirm password</label>
+                    <label htmlFor="register-confirm-password">
+                        Confirm password
+                    </label>
 
                     <input
+                        id="register-confirm-password"
                         type="password"
                         value={confirmPassword}
                         onChange={(event) =>
@@ -152,7 +157,9 @@ export default function Register({onLogin}) {
                 </form>
 
                 <div className="auth-switch">
-                    <span>Already have an account?</span>
+                    <span>
+                        Already have an account?
+                    </span>
 
                     <button
                         type="button"

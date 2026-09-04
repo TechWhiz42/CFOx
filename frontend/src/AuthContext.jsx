@@ -25,7 +25,21 @@ export function AuthProvider({children}) {
                     }
                 );
 
-                const data = await response.json();
+                if (response.status === 401) {
+                    if (!cancelled) {
+                        clearSession();
+                    }
+
+                    return;
+                }
+
+                let data = null;
+
+                try {
+                    data = await response.json();
+                } catch {
+                    data = null;
+                }
 
                 if (!response.ok) {
                     throw new Error(
