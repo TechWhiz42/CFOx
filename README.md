@@ -92,13 +92,6 @@ Open:
 http://localhost
 ```
 
-Demo login:
-
-```text
-Email: demo@cfox.local
-Password: StrongPassword123
-```
-
 ## Development Setup
 
 Backend:
